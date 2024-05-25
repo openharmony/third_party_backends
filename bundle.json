@@ -1,0 +1,39 @@
+{
+    "name": "@ohos/backends",
+    "description": "backends(Scanner Access Now Easy) is a framework for standardized access to any raster scanner",
+    "version": "1.1.1",
+    "license": "GPL v2",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "third_party/backends"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "backends",
+        "subsystem": "thirdparty",
+        "syscap": [],
+        "features": [],
+        "adapted_system_type": [],
+        "rom": "10KB",
+        "ram": "10KB",
+        "deps": {
+            "components": [
+                "hilog"
+            ],
+            "third_party": [
+                "libusb",
+                "libxml2",
+                "libpng",
+                "libjpeg-turbo"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//third_party/backends:third_sane"
+            ],
+            "inner_kits": [],
+            "test": []
+        }
+    }
+}
