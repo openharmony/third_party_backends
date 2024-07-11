@@ -32,7 +32,18 @@
             "sub_component": [
                 "//third_party/backends:third_sane"
             ],
-            "inner_kits": [],
+            "inner_kits": [
+                {
+                    "name": "//third_party/backends:third_sane",
+                    "header": {
+                        "header_files": [
+                            "sane/sane.h",
+                            "sane/saneopts.h"
+                        ],
+                        "header_base": "//third_party/backends/include"
+                    }
+                }
+            ],
             "test": []
         }
     }
