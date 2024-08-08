@@ -2,7 +2,7 @@
 ## SANE简介
 SANE是一个应用程序编程接口（API），它提供对任何光栅图像扫描仪硬件（平板扫描仪、手持式扫描仪、视频和静态摄像机、帧处理器等）的标准化访问。
 
-您也可以通过[CUPS官网主页](https://github.com/OpenPrinting/cups)了解更多关于SANE项目的信息。
+您也可以通过[SANE官网主页](http://sane-project.org/)了解更多关于SANE项目的信息。
 
 ## 引入背景简述
 OpenHarmony南向生态发展过程中，需要对存量市场的扫描仪进行兼容。使用SANE扫描系统能直接对接市场上大部分的扫描仪，也减少了扫描仪驱动适配OpenHarmony系统的难度。
