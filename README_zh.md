@@ -38,6 +38,8 @@ OpenHarmony南向生态发展过程中，需要对存量市场的扫描仪进行
 在您的BUILD.gn需要的地方添加依赖
 ```json
 deps += [ "//third_party/backends:third_sane" ]
+include_dirs += [ "//third_party/backends/include" ]
+```
 ```c
 SANE_Status status;
 SANE_Handle handle;
