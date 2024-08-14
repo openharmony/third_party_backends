@@ -20,9 +20,38 @@ SANE_V_MAJOR = 1
 SANE_V_MINOR = 2
 SANE_LIB_DIR = "/data/service/el1/public/print_service/sane/backend"
 enable_hilog = true
+source_dir = "//third_party/backends"
+target_dir = "${target_gen_dir}/sane"
+
+backends_usb_manager_source_file = [
+  "$target_dir/src/sanei_usb.c",
+  "$target_dir/src/usb_manager.cpp"
+]
+
+backends_usb_header_file = [
+  "$target_dir/include/config.h",
+  "$target_dir/include/usb_manager.h",
+]
+
+action("backends_action") {
+  print("backends_action is exec")
+  script = "//third_party/backends/install.py"
+  outputs = []
+  outputs += backends_usb_manager_source_file
+  outputs += backends_usb_header_file
+
+  inputs = [ "${source_dir}/patches/usbmanager.patch" ]
+  backends_source_dir = rebase_path("${source_dir}", root_build_dir)
+  backends_target_dir = rebase_path("${target_dir}", root_build_dir)
+  args = [
+    "--gen-dir",
+    "$backends_target_dir",
+    "--source-dir",
+    "$backends_source_dir",
+  ]
+}
 
 base_deps = [
-  "//third_party/libusb:libusb",
   "//third_party/libxml2:xml2",
   "//third_party/libpng:libpng",
   "//third_party/libjpeg-turbo:turbojpeg",
@@ -35,7 +64,6 @@ config("base_config") {
     "./include/sane",
     "//third_party/libxml2/libxml2-2.9.14/include",
     "//third_party/libjpeg-turbo",
-    "//third_party/libusb/libusb-1.0.26/libusb",
     "//third_party/libpng/libpng-1.6.37"
   ]
     
@@ -100,7 +128,6 @@ sanei_names = [
   "sanei_pio",
   "sanei_pa4s2",
   "sanei_auth",
-  "sanei_usb",
   "sanei_thread",
   "sanei_pv8630",
   "sanei_pp",
@@ -130,6 +157,33 @@ foreach (name, sanei_names) {
     subsystem_name = "thirdparty"
     part_name = "backends"
   }
+}
+
+ohos_source_set("sanei_usb") {
+  include_dirs = [
+    "$target_dir/include"
+  ]
+  sources = [
+    "$target_dir/src/sanei_usb.c",
+    "$target_dir/src/usb_manager.cpp"
+  ]
+
+  deps = base_deps
+  deps += [
+    ":backends_action"
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "usb_manager:usbsrv_client",
+    "bounds_checking_function:libsec_shared"
+  ]
+
+  configs = [":base_config"]
+
+  subsystem_name = "thirdparty"
+  part_name = "backends"
 }
 
 ohos_static_library("sanei") {
