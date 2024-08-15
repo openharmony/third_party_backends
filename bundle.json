@@ -19,10 +19,12 @@
         "ram": "10KB",
         "deps": {
             "components": [
-                "hilog"
+                "hilog",
+                "usb_manager",
+                "bounds_checking_function",
+                "c_utils"
             ],
             "third_party": [
-                "libusb",
                 "libxml2",
                 "libpng",
                 "libjpeg-turbo"
