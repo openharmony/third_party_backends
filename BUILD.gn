@@ -13,12 +13,12 @@
 
 import("//build/ohos.gni")
 
-SANE_CONFIG_DIR = "/data/service/el1/public/print_service/sane/config"
-SANE_DATA_DIR = "/data/service/el1/public/print_service/sane/data"
-SANE_LOCK_DIR = "/data/service/el1/public/print_service/sane/lock"
+SANE_CONFIG_DIR = "/data/service/el2/public/print_service/sane/config"
+SANE_DATA_DIR = "/data/service/el2/public/print_service/sane/data"
+SANE_LOCK_DIR = "/data/service/el2/public/print_service/sane/lock"
 SANE_V_MAJOR = 1
 SANE_V_MINOR = 2
-SANE_LIB_DIR = "/data/service/el1/public/print_service/sane/backend"
+SANE_LIB_DIR = "/data/service/el2/public/print_service/sane/backend"
 enable_hilog = true
 source_dir = "//third_party/backends"
 target_dir = "${target_gen_dir}/sane"
