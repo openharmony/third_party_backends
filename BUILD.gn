@@ -26,7 +26,7 @@ target_dir = "${target_gen_dir}/sane"
 
 backends_usb_manager_source_file = [
   "$target_dir/src/sanei_usb.c",
-  "$target_dir/src/usb_manager.cpp",
+  "$target_dir/src/usb_manager.cpp"
 ]
 
 backends_usb_header_file = [
@@ -52,13 +52,22 @@ action("backends_action") {
   ]
 }
 
+base_deps = [
+  "//third_party/libxml2:xml2",
+  "//third_party/libpng:libpng",
+  "//third_party/libjpeg-turbo:turbojpeg",
+]
+
 config("base_config") {
   include_dirs = [
     ".",
     "./include",
     "./include/sane",
+    "//third_party/libxml2/libxml2-2.9.14/include",
+    "//third_party/libjpeg-turbo",
+    "//third_party/libpng/libpng-1.6.37"
   ]
-
+    
   cflags = [
     "-Wall",
     "-g",
@@ -88,16 +97,18 @@ config("base_config") {
 }
 
 config("backend_config") {
-  configs = [ ":base_config" ]
+  configs = [":base_config"]
 
-  defines = [ "LIBDIR=\"$SANE_LIB_DIR\"" ]
+  defines = ["LIBDIR=\"$SANE_LIB_DIR\""]
 }
 
 #build targets in /lib
 ohos_source_set("lib") {
-  sources = [ "./lib/md5.c" ]
+  sources = ["./lib/md5.c"]
 
-  configs = [ ":base_config" ]
+  configs = [":base_config"]
+
+  deps = base_deps
 
   subsystem_name = "thirdparty"
   part_name = "backends"
@@ -131,15 +142,19 @@ sanei_names = [
   "sanei_jpeg",
 ]
 
-foreach(name, sanei_names) {
+foreach (name, sanei_names) {
   ohos_source_set("$name") {
-    sources = [ "./sanei/$name.c" ]
+    sources = ["./sanei/$name.c"]
+
+    deps = base_deps
 
     if (enable_hilog) {
-      external_deps = [ "hilog:libhilog" ]
+        external_deps = [
+        "hilog:libhilog",
+        ]
     }
 
-    configs = [ ":base_config" ]
+    configs = [":base_config"]
 
     subsystem_name = "thirdparty"
     part_name = "backends"
@@ -147,23 +162,27 @@ foreach(name, sanei_names) {
 }
 
 ohos_source_set("sanei_usb") {
-  include_dirs = [ "$target_dir/include" ]
+  include_dirs = [
+    "$target_dir/include"
+  ]
   sources = [
     "$target_dir/src/sanei_usb.c",
-    "$target_dir/src/usb_manager.cpp",
+    "$target_dir/src/usb_manager.cpp"
   ]
 
-  deps = [ ":backends_action" ]
+  deps = base_deps
+  deps += [
+    ":backends_action"
+  ]
 
   external_deps = [
-    "bounds_checking_function:libsec_shared",
     "c_utils:utils",
     "hilog:libhilog",
-    "libxml2:libxml2",
     "usb_manager:usbsrv_client",
+    "bounds_checking_function:libsec_shared"
   ]
 
-  configs = [ ":base_config" ]
+  configs = [":base_config"]
 
   subsystem_name = "thirdparty"
   part_name = "backends"
@@ -173,14 +192,16 @@ ohos_static_library("sanei") {
   sources = []
 
   foreach(name, sanei_names) {
-    sources += [ "./sanei/$name.c" ]
+    sources += ["./sanei/$name.c"]
   }
 
   if (enable_hilog) {
-    external_deps = [ "hilog:libhilog" ]
+    external_deps = [
+    "hilog:libhilog",
+    ]
   }
-
-  configs = [ ":base_config" ]
+  
+  configs = [":base_config"]
 
   subsystem_name = "thirdparty"
   part_name = "backends"
@@ -188,9 +209,9 @@ ohos_static_library("sanei") {
 
 #build targets in /backend
 ohos_source_set("sane_strstatus") {
-  sources = [ "./backend/sane_strstatus.c" ]
-
-  configs = [ ":backend_config" ]
+  sources = ["./backend/sane_strstatus.c"]
+    
+  configs = [":backend_config"]
 
   subsystem_name = "thirdparty"
   part_name = "backends"
@@ -198,28 +219,32 @@ ohos_source_set("sane_strstatus") {
 
 ohos_shared_library("sane") {
   sources = [
-    "./backend/dll.c",
     "./backend/stubs.c",
+    "./backend/dll.c",
   ]
-
-  configs = [ ":backend_config" ]
-
-  defines = [ "BACKEND_NAME=dll" ]
+  
+  configs = [":backend_config"]
+    
+  defines = ["BACKEND_NAME=dll"]
 
   deps = [
-    ":lib",
-    ":sane_strstatus",
-    ":sanei_config",
-    ":sanei_constrain_value",
     ":sanei_init_debug",
+    ":sanei_constrain_value",
+    ":sanei_config",
+    ":sane_strstatus",
     ":sanei_usb",
+    ":lib",
   ]
 
-  if (enable_hilog) {
-    external_deps = [ "hilog:libhilog" ]
-  }
+  deps += base_deps
 
-  ldflags = [ "-ldl" ]
+  if (enable_hilog) {
+    external_deps = [
+    "hilog:libhilog",
+    ]
+  }
+  
+  ldflags = ["-ldl"]
 
   subsystem_name = "thirdparty"
   part_name = "backends"
@@ -227,5 +252,7 @@ ohos_shared_library("sane") {
 
 #the target group
 group("third_sane") {
-  deps = [ ":sane" ]
+  deps = [
+    ":sane"
+  ]
 }

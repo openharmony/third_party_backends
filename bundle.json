@@ -22,8 +22,12 @@
                 "hilog",
                 "usb_manager",
                 "bounds_checking_function",
-                "c_utils",
-                "libxml2"
+                "c_utils"
+            ],
+            "third_party": [
+                "libxml2",
+                "libpng",
+                "libjpeg-turbo"
             ]
         },
         "build": {
