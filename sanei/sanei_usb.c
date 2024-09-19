@@ -84,6 +84,10 @@
 #include <libusb.h>
 #endif /* HAVE_LIBUSB */
 
+#ifdef HAVE_USB_MANAGER
+#include "usb_manager.h"
+#endif /* HAVE_USB_MANAGER */
+
 #ifdef HAVE_USBCALLS
 #include <usb.h>
 #include <os2.h>
@@ -129,7 +133,9 @@ typedef enum
 					   (Linux, BSD) */
   sanei_usb_method_libusb,
 
-  sanei_usb_method_usbcalls
+  sanei_usb_method_usbcalls,
+
+  sanei_usb_method_usb_manager
 }
 sanei_usb_access_method_type;
 
@@ -160,6 +166,11 @@ typedef struct
   libusb_device *lu_device;
   libusb_device_handle *lu_handle;
 #endif /* HAVE_LIBUSB */
+#ifdef HAVE_USB_MANAGER
+  usb_manager_device *usb_manager_device;
+  usb_manager_device_handle *usb_manager_handle;
+#endif /* HAVE_USB_MANAGER */
+
 }
 device_list_type;
 
@@ -212,9 +223,18 @@ static xmlNode* testing_xml_next_tx_node = NULL;
 static int libusb_timeout = 30 * 1000;	/* 30 seconds */
 #endif /* HAVE_LIBUSB_LEGACY */
 
+#ifdef HAVE_USB_MANAGER
+static int usb_manager_timeout = 30 * 1000;	/* 30 seconds */
+#endif /* HAVE_USB_MANAGER */
+
+
 #ifdef HAVE_LIBUSB
 static libusb_context *sanei_usb_ctx;
 #endif /* HAVE_LIBUSB */
+
+#ifdef HAVE_USB_MANAGER
+static usb_manager_context *sanei_usb_ctx;
+#endif /* HAVE_USB_MANAGER */
 
 #if defined (__APPLE__)
 /* macOS won't configure several USB scanners (i.e. ScanSnap 300M) because their
@@ -299,7 +319,7 @@ print_buffer (const SANE_Byte * buffer, SANE_Int size)
     }
 }
 
-#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB)
+#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) && !defined(HAVE_USB_MANAGER)
 static void
 kernel_get_vendor_product (int fd, const char *name, int *vendorID, int *productID)
 {
@@ -373,7 +393,7 @@ kernel_get_vendor_product (int fd, const char *name, int *vendorID, int *product
 #endif /* defined (__linux__), defined(__BEOS__), ... */
   /* put more os-dependant stuff ... */
 }
-#endif /* !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) */
+#endif /* !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) && !defined(HAVE_USB_MANAGER) */
 
 /**
  * store the given device in device list if it isn't already
@@ -404,6 +424,9 @@ store_device (device_list_type device)
 #endif
 #ifdef HAVE_LIBUSB
           devices[i].lu_device = device.lu_device;
+#endif
+#ifdef HAVE_USB_MANAGER
+          devices[i].usb_manager_device = device.usb_manager_device;
 #endif
 
           devices[i].missing=0;
@@ -496,6 +519,62 @@ sanei_libusb_strerror (int errcode)
     }
 }
 #endif /* HAVE_LIBUSB */
+
+#ifdef HAVE_USB_MANAGER
+static char *
+sanei_usb_manager_strerror (int errcode)
+{
+  /* Error codes & descriptions from the usb_manager documentation */
+
+  switch (errcode)
+    {
+      case USB_MANAGER_SUCCESS:
+	return "Success (no error)";
+
+      case USB_MANAGER_ERROR_IO:
+	return "Input/output error";
+
+      case USB_MANAGER_ERROR_INVALID_PARAM:
+	return "Invalid parameter";
+
+      case USB_MANAGER_ERROR_ACCESS:
+	return "Access denied (insufficient permissions)";
+
+      case USB_MANAGER_ERROR_NO_DEVICE:
+	return "No such device (it may have been disconnected)";
+
+      case USB_MANAGER_ERROR_NOT_FOUND:
+	return "Entity not found";
+
+      case USB_MANAGER_ERROR_BUSY:
+	return "Resource busy";
+
+      case USB_MANAGER_ERROR_TIMEOUT:
+	return "Operation timed out";
+
+      case USB_MANAGER_ERROR_OVERFLOW:
+	return "Overflow";
+
+      case USB_MANAGER_ERROR_PIPE:
+	return "Pipe error";
+
+      case USB_MANAGER_ERROR_INTERRUPTED:
+	return "System call interrupted (perhaps due to signal)";
+
+      case USB_MANAGER_ERROR_NO_MEM:
+	return "Insufficient memory";
+
+      case USB_MANAGER_ERROR_NOT_SUPPORTED:
+	return "Operation not supported or unimplemented on this platform";
+
+      case USB_MANAGER_ERROR_OTHER:
+	return "Other error";
+
+      default:
+	return "Unknown usb_manager error code";
+    }
+}
+#endif /* HAVE_USB_MANAGER */
 
 #if WITH_USB_RECORD_REPLAY
 SANE_Status sanei_usb_testing_enable_replay(SANE_String_Const path,
@@ -1380,9 +1459,9 @@ void sanei_usb_testing_record_message(SANE_String_Const message)
 void
 sanei_usb_init (void)
 {
-#ifdef HAVE_LIBUSB
+#if defined(HAVE_LIBUSB) || defined(HAVE_USB_MANAGER) 
   int ret;
-#endif /* HAVE_LIBUSB */
+#endif /* HAVE_LIBUSB || HAVE_USB_MANAGER */
 
   DBG_INIT ();
 #ifdef DBG_LEVEL
@@ -1451,7 +1530,22 @@ sanei_usb_init (void)
     }
 #endif /* HAVE_LIBUSB */
 
-#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB)
+#ifdef HAVE_USB_MANAGER
+  if (!sanei_usb_ctx)
+    {
+      DBG (4, "%s: initializing usb_manager\n", __func__);
+      ret = usb_manager_init (&sanei_usb_ctx);
+      if (ret < 0)
+	{
+	  DBG (1,
+	       "%s: failed to initialize usb_manager, error %d\n", __func__,
+	       ret);
+          return;
+	}
+    }
+#endif /* HAVE_USB_MANAGER */
+
+#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) && !defined(HAVE_USB_MANAGER)
   DBG (4, "%s: SANE is built without support for libusb\n", __func__);
 #endif
 
@@ -1498,14 +1592,21 @@ int i;
               devices[i].devname=NULL;
             }
         }
-#ifdef HAVE_LIBUSB
+#if defined(HAVE_LIBUSB)
       if (sanei_usb_ctx)
         {
           libusb_exit (sanei_usb_ctx);
 	  /* reset libusb-1.0 context */
 	  sanei_usb_ctx=NULL;
         }
-#endif
+#elif defined(HAVE_USB_MANAGER)
+      if (sanei_usb_ctx)
+        {
+          usb_manager_exit (sanei_usb_ctx);
+	  /* reset usb_manager context */
+	  sanei_usb_ctx=NULL;
+        }
+#endif /* HAVE_LIBUSB || HAVE_USB_MANAGER */
       /* reset device_number */
       device_number=0;
     }
@@ -1588,7 +1689,7 @@ static void usbcall_scan_devices(void)
 }
 #endif /* HAVE_USBCALLS */
 
-#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB)
+#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) && !defined(HAVE_USB_MANAGER)
 /** scan for devices using kernel device.
  * Check for devices using kernel device
  */
@@ -1687,7 +1788,7 @@ static void kernel_scan_devices(void)
       closedir (dir);
     }
 }
-#endif /* !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) */
+#endif /* !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) && !defined(HAVE_USB_MANAGER) */
 
 #ifdef HAVE_LIBUSB_LEGACY
 /** scan for devices using old libusb
@@ -1980,6 +2081,183 @@ static void libusb_scan_devices(void)
 }
 #endif /* HAVE_LIBUSB */
 
+#ifdef HAVE_USB_MANAGER
+/** scan for devices using usb_manager
+ * Check for devices using usb_manager
+ */
+static void libusb_scan_devices(void)
+{
+  device_list_type device;
+  SANE_Char devname[1024];
+  usb_manager_device **devlist;
+  ssize_t ndev;
+  usb_manager_device *dev;
+  usb_manager_device_handle *hdl;
+  struct usb_manager_device_descriptor desc;
+  struct usb_manager_config_descriptor *config0;
+  unsigned short vid, pid;
+  unsigned char busno, address;
+  int config;
+  int interface;
+  int ret;
+  int i;
+
+  DBG (4, "%s: Looking for usb_manager devices\n", __func__);
+
+  ndev = usb_manager_get_device_list (sanei_usb_ctx, &devlist);
+  if (ndev < 0)
+    {
+      DBG (1,
+	   "%s: failed to get usb_manager device list, error %d\n", __func__,
+	   (int) ndev);
+      return;
+    }
+
+  for (i = 0; i < ndev; i++)
+    {
+      SANE_Bool found = SANE_FALSE;
+
+      dev = devlist[i];
+
+      busno = usb_manager_get_bus_number (dev);
+      address = usb_manager_get_device_address (dev);
+
+      ret = usb_manager_get_device_descriptor (dev, &desc);
+      if (ret < 0)
+	{
+	  DBG (1,
+	       "%s: could not get device descriptor for device at %03d:%03d (err %d)\n", __func__,
+	       busno, address, ret);
+	  continue;
+	}
+
+      vid = desc.idVendor;
+      pid = desc.idProduct;
+
+      if ((vid == 0) || (pid == 0))
+	{
+	  DBG (5,
+	       "%s: device 0x%04x/0x%04x at %03d:%03d looks like a root hub\n", __func__,
+	       vid, pid, busno, address);
+	  continue;
+	}
+
+      ret = usb_manager_open (dev, &hdl);
+      if (ret < 0)
+	{
+	  DBG (1,
+	       "%s: skipping device 0x%04x/0x%04x at %03d:%03d: cannot open: %s\n", __func__,
+	       vid, pid, busno, address, sanei_usb_manager_strerror (ret));
+
+	  continue;
+	}
+
+      ret = usb_manager_get_configuration (hdl, &config);
+
+      usb_manager_close (hdl);
+
+      if (ret < 0)
+	{
+	  DBG (1,
+	       "%s: could not get configuration for device 0x%04x/0x%04x at %03d:%03d (err %d)\n", __func__,
+	       vid, pid, busno, address, ret);
+	  continue;
+	}
+
+#if !defined(SANEI_ALLOW_UNCONFIGURED_DEVICES)
+      if (config == 0)
+	{
+	  DBG (1,
+	       "%s: device 0x%04x/0x%04x at %03d:%03d is not configured\n", __func__,
+	       vid, pid, busno, address);
+	  continue;
+	}
+#endif
+
+      ret = usb_manager_get_config_descriptor (dev, 0, &config0);
+      if (ret < 0)
+	{
+	  DBG (1,
+	       "%s: could not get config[0] descriptor for device 0x%04x/0x%04x at %03d:%03d (err %d)\n", __func__,
+	       vid, pid, busno, address, ret);
+	  continue;
+	}
+
+      for (interface = 0; (interface < config0->bNumInterfaces) && !found; interface++)
+	{
+	  switch (desc.bDeviceClass)
+	    {
+	      case USB_MANAGER_CLASS_VENDOR_SPEC:
+		found = SANE_TRUE;
+		break;
+
+	      case USB_MANAGER_CLASS_PER_INTERFACE:
+		if ((config0->interface[interface].num_altsetting == 0)
+		    || !config0->interface[interface].altsetting)
+		  {
+		    DBG (1, "%s: device 0x%04x/0x%04x doesn't "
+			 "have an altsetting for interface %d\n", __func__,
+			 vid, pid, interface);
+		    continue;
+		  }
+
+		switch (config0->interface[interface].altsetting[0].bInterfaceClass)
+		  {
+		    case USB_MANAGER_CLASS_VENDOR_SPEC:
+		    case USB_MANAGER_CLASS_PER_INTERFACE:
+		    case USB_MANAGER_CLASS_PTP:
+		    case 16:	/* data? */
+		      found = SANE_TRUE;
+		      break;
+		  }
+		break;
+	    }
+
+	  if (!found)
+	    DBG (5,
+		 "%s: device 0x%04x/0x%04x, interface %d "
+		 "doesn't look like a scanner (%d/%d)\n", __func__,
+		 vid, pid, interface, desc.bDeviceClass,
+		 (config0->interface[interface].num_altsetting != 0)
+		 ? config0->interface[interface].altsetting[0].bInterfaceClass : -1);
+	}
+
+      usb_manager_free_config_descriptor (config0);
+
+      interface--;
+
+      if (!found)
+	{
+	  DBG (5,
+	       "%s: device 0x%04x/0x%04x at %03d:%03d: no suitable interfaces\n", __func__,
+	       vid, pid, busno, address);
+	  continue;
+	}
+
+      memset (&device, 0, sizeof (device));
+      device.usb_manager_device = usb_manager_ref_device(dev);
+      snprintf (devname, sizeof (devname), "libusb:%03d:%03d",
+		busno, address);
+      device.devname = strdup (devname);
+      if (!device.devname)
+	return;
+      device.vendor = vid;
+      device.product = pid;
+      device.method = sanei_usb_method_libusb;
+      device.interface_nr = interface;
+      device.alt_setting = 0;
+      DBG (4,
+	   "%s: found usb_manager device (0x%04x/0x%04x) interface "
+	   "%d at %s\n", __func__,
+	   vid, pid, interface, devname);
+
+      store_device (device);
+    }
+
+  usb_manager_free_device_list (devlist, 1);
+
+}
+#endif /* HAVE_USB_MANAGER */
 
 void
 sanei_usb_scan_devices (void)
@@ -2009,11 +2287,11 @@ sanei_usb_scan_devices (void)
     }
 
   /* Check for devices using the kernel scanner driver */
-#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB)
+#if !defined(HAVE_LIBUSB_LEGACY) && !defined(HAVE_LIBUSB) && !defined(HAVE_USB_MANAGER)
   kernel_scan_devices();
 #endif
 
-#if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB)
+#if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB) || defined(HAVE_USB_MANAGER)
   /* Check for devices using libusb (old or new)*/
   libusb_scan_devices();
 #endif
@@ -2223,7 +2501,7 @@ sanei_usb_set_endpoint (SANE_Int dn, SANE_Int ep_type, SANE_Int ep)
     }
 }
 
-#if HAVE_LIBUSB_LEGACY || HAVE_LIBUSB || HAVE_USBCALLS || WITH_USB_RECORD_REPLAY
+#if HAVE_LIBUSB_LEGACY || HAVE_LIBUSB || HAVE_USBCALLS || WITH_USB_RECORD_REPLAY || HAVE_USB_MANAGER
 static const char* sanei_usb_transfer_type_desc(SANE_Int transfer_type)
 {
   switch (transfer_type)
@@ -2292,7 +2570,7 @@ static void sanei_usb_add_endpoint(device_list_type* device,
         *ep_out = ep_address;
     }
 }
-#endif // HAVE_LIBUSB_LEGACY || HAVE_LIBUSB || HAVE_USBCALLS
+#endif // HAVE_LIBUSB_LEGACY || HAVE_LIBUSB || HAVE_USBCALLS || HAVE_USB_MANAGER
 
 SANE_Int
 sanei_usb_get_endpoint (SANE_Int dn, SANE_Int ep_type)
@@ -2815,12 +3093,230 @@ sanei_usb_open (SANE_String_Const devname, SANE_Int * dn)
 
 	  libusb_free_config_descriptor (config);
 	}
+#elif defined(HAVE_USB_MANAGER) /* usb_manager */
 
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+      int config;
+      usb_manager_device *dev;
+      struct usb_manager_device_descriptor desc;
+      struct usb_manager_config_descriptor *config0;
+      int result, num;
+      int c, i, a;
+
+      dev = devices[devcount].usb_manager_device;
+
+      result = usb_manager_open (dev, &devices[devcount].usb_manager_handle);
+      if (result < 0)
+	{
+	  SANE_Status status = SANE_STATUS_INVAL;
+
+	  DBG (1, "sanei_usb_open: can't open device `%s': %s\n",
+	       devname, sanei_usb_manager_strerror (result));
+	  if (result == USB_MANAGER_ERROR_ACCESS)
+	    {
+	      DBG (1, "Make sure you run as root or set appropriate "
+		   "permissions\n");
+	      status = SANE_STATUS_ACCESS_DENIED;
+	    }
+	  else if (result == USB_MANAGER_ERROR_BUSY)
+	    {
+	      DBG (1, "Maybe the kernel scanner driver claims the "
+		   "scanner's interface?\n");
+	      status = SANE_STATUS_DEVICE_BUSY;
+	    }
+	  else if (result == USB_MANAGER_ERROR_NO_MEM)
+	    {
+	      status = SANE_STATUS_NO_MEM;
+	    }
+	  return status;
+	}
+
+      result = usb_manager_get_configuration (devices[devcount].usb_manager_handle, &config);
+      if (result < 0)
+	{
+	  DBG (1,
+	       "sanei_usb_open: could not get configuration for device `%s' (err %d)\n",
+	       devname, result);
+	  return SANE_STATUS_INVAL;
+	}
+
+#if !defined(SANEI_ALLOW_UNCONFIGURED_DEVICES)
+      if (config == 0)
+	{
+	  DBG (1, "sanei_usb_open: device `%s' not configured?\n", devname);
+	  return SANE_STATUS_INVAL;
+	}
+#endif
+
+      result = usb_manager_get_device_descriptor (dev, &desc);
+      if (result < 0)
+	{
+	  DBG (1,
+	       "sanei_usb_open: could not get device descriptor for device `%s' (err %d)\n",
+	       devname, result);
+	  return SANE_STATUS_INVAL;
+	}
+
+      result = usb_manager_get_config_descriptor (dev, 0, &config0);
+      if (result < 0)
+	{
+	  DBG (1,
+	       "sanei_usb_open: could not get config[0] descriptor for device `%s' (err %d)\n",
+	       devname, result);
+	  return SANE_STATUS_INVAL;
+	}
+
+      /* Set the configuration */
+      if (desc.bNumConfigurations > 1)
+	{
+	  DBG (3, "sanei_usb_open: more than one "
+	       "configuration (%d), choosing first config (%d)\n",
+	       desc.bNumConfigurations,
+	       config0->bConfigurationValue);
+
+	  result = 0;
+	  if (config != config0->bConfigurationValue)
+	    result = usb_manager_set_configuration (devices[devcount].usb_manager_handle,
+					       config0->bConfigurationValue);
+
+	  if (result < 0)
+	    {
+	      SANE_Status status = SANE_STATUS_INVAL;
+
+	      DBG (1, "sanei_usb_open: usb_manager complained: %s\n",
+		   sanei_usb_manager_strerror (result));
+	      if (result == USB_MANAGER_ERROR_ACCESS)
+		{
+		  DBG (1, "Make sure you run as root or set appropriate "
+		       "permissions\n");
+		  status = SANE_STATUS_ACCESS_DENIED;
+		}
+	      else if (result == USB_MANAGER_ERROR_BUSY)
+		{
+		  DBG (3, "Maybe the kernel scanner driver or usblp claims "
+		       "the interface? Ignoring this error...\n");
+		  status = SANE_STATUS_GOOD;
+		}
+
+	      if (status != SANE_STATUS_GOOD)
+		{
+		  usb_manager_close (devices[devcount].usb_manager_handle);
+		  usb_manager_free_config_descriptor (config0);
+		  return status;
+		}
+	    }
+	}
+      usb_manager_free_config_descriptor (config0);
+
+      /* Claim the interface */
+      result = usb_manager_claim_interface (devices[devcount].usb_manager_handle,
+				       devices[devcount].interface_nr);
+      if (result < 0)
+	{
+	  SANE_Status status = SANE_STATUS_INVAL;
+
+	  DBG (1, "sanei_usb_open: usb_manager complained: %s\n",
+	       sanei_usb_manager_strerror (result));
+	  if (result == USB_MANAGER_ERROR_ACCESS)
+	    {
+	      DBG (1, "Make sure you run as root or set appropriate "
+		   "permissions\n");
+	      status = SANE_STATUS_ACCESS_DENIED;
+	    }
+	  else if (result == USB_MANAGER_ERROR_BUSY)
+	    {
+	      DBG (1, "Maybe the kernel scanner driver claims the "
+		   "scanner's interface?\n");
+	      status = SANE_STATUS_DEVICE_BUSY;
+	    }
+
+	  usb_manager_close (devices[devcount].usb_manager_handle);
+	  return status;
+	}
+
+      /* Loop through all of the configurations */
+      for (c = 0; c < desc.bNumConfigurations; c++)
+	{
+	  struct usb_manager_config_descriptor *config;
+
+	  result = usb_manager_get_config_descriptor (dev, c, &config);
+	  if (result < 0)
+	    {
+	      DBG (1,
+		   "sanei_usb_open: could not get config[%d] descriptor for device `%s' (err %d)\n",
+		   c, devname, result);
+	      continue;
+	    }
+
+	  /* Loop through all of the interfaces */
+	  for (i = 0; i < config->bNumInterfaces; i++)
+	    {
+	      /* Loop through all of the alternate settings */
+	      for (a = 0; a < config->interface[i].num_altsetting; a++)
+		{
+		  const struct usb_manager_interface_descriptor *interface;
+
+		  DBG (5, "sanei_usb_open: configuration nr: %d\n", c);
+		  DBG (5, "sanei_usb_open:     interface nr: %d\n", i);
+		  DBG (5, "sanei_usb_open:   alt_setting nr: %d\n", a);
+
+                  /* Start by interfaces found in sanei_usb_init */
+                  if (c == 0 && i != devices[devcount].interface_nr)
+                    {
+                      DBG (5, "sanei_usb_open: interface %d not detected as "
+                        "a scanner by sanei_usb_init, ignoring.\n", i);
+                      continue;
+                     }
+
+		  interface = &config->interface[i].altsetting[a];
+
+		  /* Now we look for usable endpoints */
+		  for (num = 0; num < interface->bNumEndpoints; num++)
+		    {
+		      const struct usb_manager_endpoint_descriptor *endpoint;
+                      int direction, transfer_type, transfer_type_usb_manager;
+
+		      endpoint = &interface->endpoint[num];
+		      DBG (5, "sanei_usb_open: endpoint nr: %d\n", num);
+
+                      transfer_type_usb_manager =
+                          endpoint->bmAttributes & USB_MANAGER_TRANSFER_TYPE_MASK;
+		      direction = endpoint->bEndpointAddress & USB_MANAGER_ENDPOINT_DIR_MASK;
+
+                      // don't rely on USB_MANAGER_TRANSFER_TYPE_* mapping to
+                      // USB_ENDPOINT_TYPE_* even though they'll most likely be
+                      // the same
+                      switch (transfer_type_usb_manager)
+                        {
+                          case USB_MANAGER_TRANSFER_TYPE_INTERRUPT:
+                            transfer_type = USB_ENDPOINT_TYPE_INTERRUPT;
+                            break;
+                          case USB_MANAGER_TRANSFER_TYPE_BULK:
+                            transfer_type = USB_ENDPOINT_TYPE_BULK;
+                            break;
+                          case USB_MANAGER_TRANSFER_TYPE_ISOCHRONOUS:
+                            transfer_type = USB_MANAGER_TRANSFER_TYPE_ISOCHRONOUS;
+                            break;
+                          case USB_MANAGER_TRANSFER_TYPE_CONTROL:
+                            transfer_type = USB_ENDPOINT_TYPE_CONTROL;
+                            break;
+
+                        }
+
+                      sanei_usb_add_endpoint(&devices[devcount],
+                                             transfer_type,
+                                             endpoint->bEndpointAddress,
+                                             direction);
+		    }
+		}
+	    }
+
+	  usb_manager_free_config_descriptor (config);
+	}
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
       DBG (1, "sanei_usb_open: can't open device `%s': "
 	   "libusb support missing\n", devname);
       return SANE_STATUS_UNSUPPORTED;
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
     }
   else if (devices[devcount].method == sanei_usb_method_scanner_driver)
     {
@@ -3061,7 +3557,22 @@ sanei_usb_close (SANE_Int dn)
 				devices[dn].interface_nr);
       libusb_close (devices[dn].lu_handle);
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      /* This call seems to be required by Linux xhci driver
+       * even though it should be a no-op. Without it, the
+       * host or driver does not reset it's data toggle bit.
+       * We intentionally ignore the return val */
+      if (workaround)
+        {
+          sanei_usb_set_altinterface (dn, devices[dn].alt_setting);
+        }
+
+      usb_manager_release_interface (devices[dn].usb_manager_handle,
+				devices[dn].interface_nr);
+      usb_manager_close (devices[dn].usb_manager_handle);
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
     DBG (1, "sanei_usb_close: libusb support missing\n");
 #endif
   devices[dn].open = SANE_FALSE;
@@ -3076,9 +3587,11 @@ sanei_usb_set_timeout (SANE_Int __sane_unused__ timeout)
 
 #if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB)
   libusb_timeout = timeout;
+#elif defined(HAVE_USB_MANAGER)
+  usb_manager_timeout = timeout;
 #else
   DBG (1, "sanei_usb_set_timeout: libusb support missing\n");
-#endif /* HAVE_LIBUSB_LEGACY || HAVE_LIBUSB */
+#endif /* HAVE_LIBUSB_LEGACY || HAVE_LIBUSB || HAVE_USB_MANAGER */
 }
 
 SANE_Status
@@ -3151,9 +3664,32 @@ sanei_usb_clear_halt (SANE_Int dn)
     DBG (1, "sanei_usb_clear_halt: BULK_OUT ret=%d\n", ret);
     return SANE_STATUS_INVAL;
   }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+  int ret;
+
+  /* This call seems to be required by Linux xhci driver
+   * even though it should be a no-op. Without it, the
+   * host or driver does not send the clear to the device.
+   * We intentionally ignore the return val */
+  if (workaround)
+    {
+      sanei_usb_set_altinterface (dn, devices[dn].alt_setting);
+    }
+
+  ret = usb_manager_clear_halt (devices[dn].usb_manager_handle, devices[dn].bulk_in_ep);
+  if (ret){
+    DBG (1, "sanei_usb_clear_halt: BULK_IN ret=%d\n", ret);
+    return SANE_STATUS_INVAL;
+  }
+
+  ret = usb_manager_clear_halt (devices[dn].usb_manager_handle, devices[dn].bulk_out_ep);
+  if (ret){
+    DBG (1, "sanei_usb_clear_halt: BULK_OUT ret=%d\n", ret);
+    return SANE_STATUS_INVAL;
+  }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
   DBG (1, "sanei_usb_clear_halt: libusb support missing\n");
-#endif /* HAVE_LIBUSB_LEGACY || HAVE_LIBUSB */
+#endif /* HAVE_LIBUSB_LEGACY || HAVE_LIBUSB || HAVE_USB_MANAGER */
 
   return SANE_STATUS_GOOD;
 }
@@ -3181,10 +3717,18 @@ sanei_usb_reset (SANE_Int __sane_unused__ dn)
     DBG (1, "sanei_usb_reset: ret=%d\n", ret);
     return SANE_STATUS_INVAL;
   }
+#elif defined(HAVE_USB_MANAGER)
+  int ret;
 
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+  ret = usb_manager_reset_device (devices[dn].usb_manager_handle);
+  if (ret){
+    DBG (1, "sanei_usb_reset: ret=%d\n", ret);
+    return SANE_STATUS_INVAL;
+  }
+
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
   DBG (1, "sanei_usb_reset: libusb support missing\n");
-#endif /* HAVE_LIBUSB_LEGACY || HAVE_LIBUSB */
+#endif /* HAVE_LIBUSB_LEGACY || HAVE_LIBUSB || HAVE_USB_MANAGER */
 
   return SANE_STATUS_GOOD;
 }
@@ -3428,7 +3972,36 @@ sanei_usb_read_bulk (SANE_Int dn, SANE_Byte * buffer, size_t * size)
 	  return SANE_STATUS_INVAL;
 	}
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      if (devices[dn].bulk_in_ep)
+	{
+	  int ret, rsize;
+	  ret = usb_manager_bulk_transfer (devices[dn].usb_manager_handle,
+				      devices[dn].bulk_in_ep, buffer,
+				      (int) *size, &rsize,
+				      usb_manager_timeout);
+
+	  if (ret < 0)
+	    {
+              DBG (1, "sanei_usb_read_bulk: read failed (still got %d bytes): %s\n",
+                   rsize, sanei_usb_manager_strerror (ret));
+
+	      read_size = -1;
+	    }
+	  else
+	    {
+	      read_size = rsize;
+	    }
+	}
+      else
+	{
+	  DBG (1, "sanei_usb_read_bulk: can't read without a bulk-in "
+	       "endpoint\n");
+	  return SANE_STATUS_INVAL;
+	}
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
     {
       DBG (1, "sanei_usb_read_bulk: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
@@ -3500,6 +4073,9 @@ sanei_usb_read_bulk (SANE_Int dn, SANE_Byte * buffer, size_t * size)
 #elif defined(HAVE_LIBUSB)
       if (devices[dn].method == sanei_usb_method_libusb)
 	libusb_clear_halt (devices[dn].lu_handle, devices[dn].bulk_in_ep);
+#elif defined(HAVE_USB_MANAGER)
+      if (devices[dn].method == sanei_usb_method_usb_manager)
+	usb_manager_clear_halt (devices[dn].usb_manager_handle, devices[dn].bulk_in_ep);
 #endif
       return SANE_STATUS_IO_ERROR;
     }
@@ -3763,12 +4339,40 @@ sanei_usb_write_bulk (SANE_Int dn, const SANE_Byte * buffer, size_t * size)
 	  return SANE_STATUS_INVAL;
 	}
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      if (devices[dn].bulk_out_ep)
+	{
+	  int ret;
+	  int trans_bytes;
+	  ret = usb_manager_bulk_transfer (devices[dn].usb_manager_handle,
+				      devices[dn].bulk_out_ep,
+				      (unsigned char *) buffer,
+				      (int) *size, &trans_bytes,
+				      usb_manager_timeout);
+	  if (ret < 0)
+	    {
+	      DBG (1, "sanei_usb_write_bulk: write failed: %s\n",
+		   sanei_usb_manager_strerror (ret));
+
+	      write_size = -1;
+	    }
+	  else
+	    write_size = trans_bytes;
+	}
+      else
+	{
+	  DBG (1, "sanei_usb_write_bulk: can't write without a bulk-out "
+	       "endpoint\n");
+	  return SANE_STATUS_INVAL;
+	}
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
     {
       DBG (1, "sanei_usb_write_bulk: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
   else if (devices[dn].method == sanei_usb_method_usbcalls)
   {
 #ifdef HAVE_USBCALLS
@@ -3836,6 +4440,9 @@ sanei_usb_write_bulk (SANE_Int dn, const SANE_Byte * buffer, size_t * size)
 #elif defined(HAVE_LIBUSB)
       if (devices[dn].method == sanei_usb_method_libusb)
 	libusb_clear_halt (devices[dn].lu_handle, devices[dn].bulk_out_ep);
+#elif defined(HAVE_USB_MANAGER)
+      if (devices[dn].method == sanei_usb_method_usb_manager)
+	usb_manager_clear_halt (devices[dn].usb_manager_handle, devices[dn].bulk_out_ep);
 #endif
       return SANE_STATUS_IO_ERROR;
     }
@@ -4103,12 +4710,28 @@ sanei_usb_control_msg (SANE_Int dn, SANE_Int rtype, SANE_Int req,
       if ((rtype & 0x80) && debug_level > 10)
 	print_buffer (data, len);
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB*/
+#elif defined(HAVE_USB_MANAGER)
+    {
+      int result;
+
+      result = usb_manager_control_transfer (devices[dn].usb_manager_handle, rtype, req,
+					value, index, data, len,
+					usb_manager_timeout);
+      if (result < 0)
+	{
+	  DBG (1, "sanei_usb_control_msg: libusb complained: %s\n",
+	       sanei_usb_manager_strerror (result));
+	  return SANE_STATUS_INVAL;
+	}
+      if ((rtype & 0x80) && debug_level > 10)
+	print_buffer (data, len);
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER*/
     {
       DBG (1, "sanei_usb_control_msg: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
   else if (devices[dn].method == sanei_usb_method_usbcalls)
      {
 #ifdef HAVE_USBCALLS
@@ -4282,7 +4905,7 @@ SANE_Status
 sanei_usb_read_int (SANE_Int dn, SANE_Byte * buffer, size_t * size)
 {
   ssize_t read_size = 0;
-#if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB)
+#if defined(HAVE_LIBUSB_LEGACY) || defined(HAVE_LIBUSB) || defined(HAVE_USB_MANAGER)
   SANE_Bool stalled = SANE_FALSE;
 #endif
 
@@ -4363,12 +4986,37 @@ sanei_usb_read_int (SANE_Int dn, SANE_Byte * buffer, size_t * size)
 	  return SANE_STATUS_INVAL;
 	}
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      if (devices[dn].int_in_ep)
+	{
+	  int ret;
+	  int trans_bytes;
+	  ret = usb_manager_interrupt_transfer (devices[dn].usb_manager_handle,
+					   devices[dn].int_in_ep,
+					   buffer, (int) *size,
+					   &trans_bytes, usb_manager_timeout);
+
+	  if (ret < 0)
+	    read_size = -1;
+	  else
+	    read_size = trans_bytes;
+
+	  stalled = (ret == USB_MANAGER_ERROR_PIPE);
+	}
+      else
+	{
+	  DBG (1, "sanei_usb_read_int: can't read without an int "
+	       "endpoint\n");
+	  return SANE_STATUS_INVAL;
+	}
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER*/
     {
       DBG (1, "sanei_usb_read_int: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
   else if (devices[dn].method == sanei_usb_method_usbcalls)
     {
 #ifdef HAVE_USBCALLS
@@ -4429,6 +5077,10 @@ sanei_usb_read_int (SANE_Int dn, SANE_Byte * buffer, size_t * size)
       if (devices[dn].method == sanei_usb_method_libusb)
         if (stalled)
 	  libusb_clear_halt (devices[dn].lu_handle, devices[dn].int_in_ep);
+#elif defined(HAVE_USB_MANAGER)
+      if (devices[dn].method == sanei_usb_method_usb_manager)
+        if (stalled)
+	  usb_manager_clear_halt (devices[dn].usb_manager_handle, devices[dn].int_in_ep);
 #endif
       return SANE_STATUS_IO_ERROR;
     }
@@ -4568,12 +5220,25 @@ sanei_usb_set_configuration (SANE_Int dn, SANE_Int configuration)
 	}
       return SANE_STATUS_GOOD;
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      int result;
+
+      result = usb_manager_set_configuration (devices[dn].usb_manager_handle, configuration);
+      if (result < 0)
+	{
+	  DBG (1, "sanei_usb_set_configuration: libusb complained: %s\n",
+	       sanei_usb_manager_strerror (result));
+	  return SANE_STATUS_INVAL;
+	}
+      return SANE_STATUS_GOOD;
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
     {
       DBG (1, "sanei_usb_set_configuration: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
   else
     {
       DBG (1,
@@ -4641,12 +5306,25 @@ sanei_usb_claim_interface (SANE_Int dn, SANE_Int interface_number)
 	}
       return SANE_STATUS_GOOD;
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      int result;
+
+      result = usb_manager_claim_interface (devices[dn].usb_manager_handle, interface_number);
+      if (result < 0)
+	{
+	  DBG (1, "sanei_usb_claim_interface: libusb complained: %s\n",
+	       sanei_usb_manager_strerror (result));
+	  return SANE_STATUS_INVAL;
+	}
+      return SANE_STATUS_GOOD;
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
     {
       DBG (1, "sanei_usb_claim_interface: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER*/
   else
     {
       DBG (1, "sanei_usb_claim_interface: access method %d not implemented\n",
@@ -4712,12 +5390,25 @@ sanei_usb_release_interface (SANE_Int dn, SANE_Int interface_number)
 	}
       return SANE_STATUS_GOOD;
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      int result;
+
+      result = usb_manager_release_interface (devices[dn].usb_manager_handle, interface_number);
+      if (result < 0)
+	{
+	  DBG (1, "sanei_usb_release_interface: libusb complained: %s\n",
+	       sanei_usb_manager_strerror (result));
+	  return SANE_STATUS_INVAL;
+	}
+      return SANE_STATUS_GOOD;
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
     {
       DBG (1, "sanei_usb_release_interface: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER  */
   else
     {
       DBG (1,
@@ -4783,12 +5474,26 @@ sanei_usb_set_altinterface (SANE_Int dn, SANE_Int alternate)
 	}
       return SANE_STATUS_GOOD;
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      int result;
+
+      result = usb_manager_set_interface_alt_setting (devices[dn].usb_manager_handle,
+						 devices[dn].interface_nr, alternate);
+      if (result < 0)
+	{
+	  DBG (1, "sanei_usb_set_altinterface: usb_manager complained: %s\n",
+	       sanei_usb_manager_strerror (result));
+	  return SANE_STATUS_INVAL;
+	}
+      return SANE_STATUS_GOOD;
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER*/
     {
       DBG (1, "sanei_set_altinterface: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
   else
     {
       DBG (1,
@@ -4949,12 +5654,36 @@ sanei_usb_get_descriptor( SANE_Int dn,
       desc->dev_protocol    = lu_desc.bDeviceProtocol;
       desc->max_packet_size = lu_desc.bMaxPacketSize0;
     }
-#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#elif defined(HAVE_USB_MANAGER)
+    {
+      struct usb_manager_device_descriptor usb_manager_desc;
+      int ret;
+
+      ret = usb_manager_get_device_descriptor (devices[dn].usb_manager_device, &usb_manager_desc);
+      if (ret < 0)
+	{
+	  DBG (1,
+	       "sanei_usb_get_descriptor: libusb error: %s\n",
+	       sanei_usb_manager_strerror (ret));
+
+	  return SANE_STATUS_INVAL;
+	}
+
+      desc->desc_type = usb_manager_desc.bDescriptorType;
+      desc->bcd_usb   = usb_manager_desc.bcdUSB;
+      desc->bcd_dev   = usb_manager_desc.bcdDevice;
+      desc->dev_class = usb_manager_desc.bDeviceClass;
+
+      desc->dev_sub_class   = usb_manager_desc.bDeviceSubClass;
+      desc->dev_protocol    = usb_manager_desc.bDeviceProtocol;
+      desc->max_packet_size = usb_manager_desc.bMaxPacketSize0;
+    }
+#else /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER*/
     {
       DBG (1, "sanei_usb_get_descriptor: libusb support missing\n");
       return SANE_STATUS_UNSUPPORTED;
     }
-#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB */
+#endif /* not HAVE_LIBUSB_LEGACY && not HAVE_LIBUSB && not HAVE_USB_MANAGER */
 
   if (testing_mode == sanei_usb_testing_mode_record)
     {
