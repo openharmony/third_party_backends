@@ -61,6 +61,7 @@ static std::vector<UsbDevice> g_deviceList;
 static ssize_t g_deviceCount = 0;
 static uint8_t g_interfaceNumber = 0;
 static usb_manager_config_descriptor* g_deviceConfig = nullptr;
+static std::vector<usb_manager_device*> g_refDevices;
 constexpr int maxUsbInterfaceNum = 1000;
 constexpr int maxUsbEndpointNum = 1000;
 
@@ -241,6 +242,12 @@ int usb_manager_exit(usb_manager_context *ctx)
     }
     delete ctx;
     ctx = nullptr;
+    for (const auto& refDevice : g_refDevices) {
+        if (refDevice != nullptr) {
+            delete refDevice;
+        }
+    }
+    g_refDevices.clear();
     SANE_HILOG_INFO("%s: end successful", __func__);
     return USB_MANAGER_SUCCESS;
 }
@@ -620,6 +627,24 @@ int usb_manager_set_interface_alt_setting(usb_manager_device_handle *dev_handle,
     return USB_MANAGER_SUCCESS;
 }
 
+usb_manager_device* usb_manager_ref_device(usb_manager_device *dev)
+{
+    SANE_HILOG_INFO("%s: start", __func__);
+    if (dev == nullptr) {
+        SANE_HILOG_ERROR("%s: dev is a nullptr!", __func__);
+        return nullptr;
+    }
+    usb_manager_device* refDevice = new (std::nothrow) usb_manager_device();
+    if (refDevice == nullptr) {
+        SANE_HILOG_ERROR("%s: create refDevice error!", __func__);
+        return nullptr;
+    }
+    refDevice->device = dev->device;
+    g_refDevices.push_back(refDevice);
+    SANE_HILOG_INFO("%s: end successful", __func__);
+    return refDevice;
+}
+
 // stub
 int usb_manager_interrupt_transfer(usb_manager_device_handle *dev_handle, unsigned char endpoint,
     unsigned char *data, int length, int *actual_length, unsigned int timeout)
@@ -627,14 +652,6 @@ int usb_manager_interrupt_transfer(usb_manager_device_handle *dev_handle, unsign
     SANE_HILOG_INFO("%s: start", __func__);
     SANE_HILOG_INFO("%s: end successful", __func__);
     return USB_MANAGER_SUCCESS;
-}
-
-// stub
-usb_manager_device* usb_manager_ref_device(usb_manager_device *dev)
-{
-    SANE_HILOG_INFO("%s: start", __func__);
-    SANE_HILOG_INFO("%s: end successful", __func__);
-    return nullptr;
 }
 
 // stub
