@@ -117,17 +117,12 @@ foreach(name, sanei_names) {
 }
 
 ohos_source_set("sanei_usb") {
-  sources = [
-    "./sanei/sanei_usb.c",
-    "./sanei/usb_manager.cpp",
-  ]
+  sources = [ "./sanei/sanei_usb.c" ]
 
   external_deps = [
-    "bounds_checking_function:libsec_shared",
-    "c_utils:utils",
     "hilog:libhilog",
+    "libusb:libusb",
     "libxml2:libxml2",
-    "usb_manager:usbsrv_client",
   ]
 
   public_configs = [ ":backends_public_config" ]
