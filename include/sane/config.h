@@ -207,10 +207,10 @@
 #define HAVE_LIBSNMP 0
 
 /* Define to 1 if you have libusb-1.0 */
-// #define HAVE_LIBUSB 1
+#define HAVE_LIBUSB 1
 
 /* Define to 1 if you have usb_manager */
-#define HAVE_USB_MANAGER 1
+// #define HAVE_USB_MANAGER 1
 
 /* Define to 1 if you have libusb-0.1 */
 /* #undef HAVE_LIBUSB_LEGACY */
