@@ -1,4 +1,4 @@
-#Copyright (c) 2024 Huawei Device Co., Ltd.
+#Copyright (c) 2021 Huawei Device Co., Ltd.
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
 #You may obtain a copy of the License at
@@ -21,6 +21,23 @@ SANE_LIB_DIR = "/data/service/el1/public/print_service/sane/backend"
 SANE_V_MAJOR = 1
 SANE_V_MINOR = 2
 enable_hilog = true
+source_dir = "//third_party/backends"
+target_dir = "${target_gen_dir}/sane"
+
+action("backends_action") {
+  print("backends_action is exec")
+  script = "//third_party/backends/install.py"
+  inputs = [ "${source_dir}/patches/modifying_driver_search_path.patch" ]
+  outputs = [
+    "${target_dir}/include/config.h",
+    "${target_dir}/src/dll.c",
+  ]
+  backends_source_dir = rebase_path("${source_dir}", root_build_dir)
+  args = [
+    "--source-dir",
+    "$backends_source_dir",
+  ]
+}
 
 config("backends_public_config") {
   include_dirs = [
@@ -99,6 +116,23 @@ sanei_names = [
   "sanei_jpeg",
 ]
 
+ohos_source_set("sanei_usb") {
+  sources = [ "./sanei/sanei_usb.c" ]
+
+  external_deps = [ "libusb:libusb" ]
+
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  public_configs = [ ":backends_public_config" ]
+
+  configs = [ ":backends_private_config" ]
+
+  subsystem_name = "thirdparty"
+  part_name = "backends"
+}
+
 foreach(name, sanei_names) {
   ohos_source_set("$name") {
     sources = [ "./sanei/$name.c" ]
@@ -114,23 +148,6 @@ foreach(name, sanei_names) {
     subsystem_name = "thirdparty"
     part_name = "backends"
   }
-}
-
-ohos_source_set("sanei_usb") {
-  sources = [ "./sanei/sanei_usb.c" ]
-
-  external_deps = [
-    "hilog:libhilog",
-    "libusb:libusb",
-    "libxml2:libxml2",
-  ]
-
-  public_configs = [ ":backends_public_config" ]
-
-  configs = [ ":backends_private_config" ]
-
-  subsystem_name = "thirdparty"
-  part_name = "backends"
 }
 
 ohos_static_library("sanei") {
@@ -177,6 +194,7 @@ ohos_shared_library("sane") {
   defines = [ "BACKEND_NAME=dll" ]
 
   deps = [
+    ":backends_action",
     ":lib",
     ":sane_strstatus",
     ":sanei_config",
