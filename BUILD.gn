@@ -27,7 +27,10 @@ target_dir = "${target_gen_dir}/sane"
 action("backends_action") {
   print("backends_action is exec")
   script = "//third_party/backends/install.py"
-  inputs = [ "${source_dir}/patches/modifying_driver_search_path.patch" ]
+  inputs = [
+    "${source_dir}/patches/modifying_driver_search_path.patch",
+    "${source_dir}/patches/dll.c.patch",
+  ]
   outputs = [
     "${target_dir}/include/config.h",
     "${target_dir}/src/dll.c",
