@@ -23,7 +23,8 @@ import shutil
 
 def apply_patch(source_dir):
     patch_list = [
-        'modifying_driver_search_path.patch'
+        'modifying_driver_search_path.patch',
+        'dll.c.patch',
     ]
 
     for patch in patch_list:
