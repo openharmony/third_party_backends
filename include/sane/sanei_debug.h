@@ -10,6 +10,7 @@
 #include <sane/sanei.h>
 
 #include "hilog/log.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
