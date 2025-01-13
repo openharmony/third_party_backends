@@ -182,7 +182,7 @@ sanei_thread_kill( SANE_Pid pid )
 #if defined (__APPLE__) && defined (__MACH__)
 	return pthread_kill((pthread_t)pid, SIGUSR2);
 #else
-	return pthread_cancel((pthread_t)pid);
+	return pthread_kill((pthread_t)pid, 10);
 #endif
 #elif defined HAVE_OS2_H
 	return DosKillThread(pid);
@@ -344,7 +344,6 @@ local_thread( void *arg )
 	int old;
 
 	pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, &old );
-	pthread_setcanceltype ( PTHREAD_CANCEL_ASYNCHRONOUS, &old );
 #endif
 
 	DBG( 2, "thread started, calling func() now...\n" );
