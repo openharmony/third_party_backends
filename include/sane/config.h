@@ -209,14 +209,11 @@
 /* Define to 1 if you have libusb-1.0 */
 #define HAVE_LIBUSB 1
 
-/* Define to 1 if you have usb_manager */
-// #define HAVE_USB_MANAGER 1
-
 /* Define to 1 if you have libusb-0.1 */
 /* #undef HAVE_LIBUSB_LEGACY */
 
 /* Define to 1 if libxml2 is available */
-#define HAVE_LIBXML2 1
+// #define HAVE_LIBXML2 1
 
 /* Define to 1 if you have the <limits.h> header file. */
 #define HAVE_LIMITS_H 1
@@ -256,9 +253,6 @@
 
 /* Define to 1 if you have the <os2.h> header file. */
 /* #undef HAVE_OS2_H */
-
-/* Define to 1 if the scanner driver is accessed through the scan service. */
-#define HAVE_SCAN_SERVICE 1
 
 /* Define to 1 if you have the `poll' function. */
 #define HAVE_POLL 1
@@ -474,7 +468,7 @@
 #define HAVE_U_SHORT 1
 
 /* Define to 1 if you have the `vsyslog' function. */
-// #define HAVE_VSYSLOG 1
+//#define HAVE_VSYSLOG 1
 
 /* Define to 1 if you have the <wchar.h> header file. */
 #define HAVE_WCHAR_H 1
@@ -654,9 +648,6 @@
 
 /* Define to 1 if Avahi support is available */
 #define WITH_AVAHI 1
-
-/* define if USB record replay is enabled */
-#define WITH_USB_RECORD_REPLAY 1
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
