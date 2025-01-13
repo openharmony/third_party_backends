@@ -360,47 +360,6 @@ dyld_get_error_str ()
 }
 #endif
 
-#if defined(HAVE_SCAN_SERVICE)
-static int has_suffix(const char *filename, const char *suffix) {
-    size_t len_filename = strlen(filename);
-    size_t len_suffix = strlen(suffix);
-    return len_suffix <= len_filename && strcmp(filename + len_filename - len_suffix, suffix) == 0;
-}
-
-static void find_libname_by_drivername(char* libname, char* dir, char* drivername)
-{
-    DBG(1, "%s: begin", __func__);
-    if (libname == NULL || dir == NULL || drivername == NULL)
-    {
-        DBG(2, "%s: input parameter is a nullptr.\n", __func__);
-        return;
-    }
-    char driver[PATH_MAX] = {0};
-    snprintf (driver, sizeof (driver), "libsane-%s.z.so", drivername);
-    DIR *backends_dir = opendir(dir);
-    if (backends_dir == NULL) {
-        DBG(2, "open dir %s error\n", backends_dir);
-        return;
-    }
-    struct dirent *entry;
-    char full_path[PATH_MAX] = {0};
-    while ((entry = readdir(backends_dir)) != NULL) {
-        // ignore '.' and '..' 
-        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-            memset(full_path, 0, PATH_MAX);
-            snprintf(full_path, PATH_MAX, "%s/" "%s", dir, entry->d_name);
-            DBG(2, "full_path %s\n", full_path);
-            if (has_suffix(full_path, driver)) {
-                memset(libname, 0, PATH_MAX);
-                strncpy(libname, full_path, PATH_MAX);
-                break;
-            }
-        }
-    }
-    closedir(backends_dir);
-}
-#endif
-
 #ifdef __BEOS__
 #include <FindDirectory.h>
 
@@ -539,8 +498,6 @@ load (struct backend *be)
       snprintf (libname, sizeof (libname), "%s/" PREFIX "%.2s%.5s" POSTFIX,
 		dir, be->name, strlen(be->name)>7 ? (be->name)+strlen(be->name)-5 :
                                             (be->name)+2, V_MAJOR);
-#elif defined (HAVE_SCAN_SERVICE)
-    find_libname_by_drivername(libname, dir, be->name);
 #else
       snprintf (libname, sizeof (libname), "%s/" PREFIX "%s" POSTFIX,
 		dir, be->name, V_MAJOR);
