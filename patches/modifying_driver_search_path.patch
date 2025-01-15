@@ -1,5 +1,5 @@
 diff --git a/backend/dll.c b/backend/dll.c
-index bf34c4f6d..7cb7fd508 100644
+index bf34c4f6d..9b13d3a59 100644
 --- a/backend/dll.c
 +++ b/backend/dll.c
 @@ -292,6 +292,46 @@ static const char *op_name[] = {
@@ -58,7 +58,7 @@ index bf34c4f6d..7cb7fd508 100644
  #else
        snprintf (libname, sizeof (libname), "%s/" PREFIX "%s" POSTFIX,
  		dir, be->name, V_MAJOR);
-@@ -807,6 +849,26 @@ read_config (const char *conffile)
+@@ -807,6 +849,30 @@ read_config (const char *conffile)
    fclose (fp);
  }
  
@@ -69,6 +69,10 @@ index bf34c4f6d..7cb7fd508 100644
 +  const char* dir = "/data/service/el1/public/print_service/sane/config";
 +  DBG(1, "%s: config_dir : %s ", __func__, dir);
 +  DIR *config_dir = opendir(dir);
++  if (config_dir == NULL) {
++    DBG(1, "sane_init/read_configs: opendir failed: %s\n", strerror (errno));
++    return;
++  }
 +  struct dirent *entry;
 +  while ((entry = readdir(config_dir)) != NULL) {
 +      // ignore '.' and '..'
@@ -85,7 +89,7 @@ index bf34c4f6d..7cb7fd508 100644
  static void
  read_dlld (void)
  {
-@@ -931,8 +993,11 @@ sane_init (SANE_Int * version_code, SANE_Auth_Callback authorize)
+@@ -931,8 +997,11 @@ sane_init (SANE_Int * version_code, SANE_Auth_Callback authorize)
     * Read dll.d first, so that the extras backends will be tried last
     */
    read_dlld ();
