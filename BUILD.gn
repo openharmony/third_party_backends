@@ -62,6 +62,7 @@ config("backends_private_config") {
     "-Wno-unused-const-variable",
     "-Wno-unused-variable",
     "-Wno-unused-but-set-variable",
+    "-Wno-unused-function",
   ]
 
   if (enable_hilog) {

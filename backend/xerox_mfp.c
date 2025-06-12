@@ -209,14 +209,15 @@ static int isSupportedDevice(struct device __sane_unused__ *dev)
 #ifdef HAVE_LIBJPEG
     /* Checking device which supports JPEG Lossy compression for color scanning*/
     if (dev->compressionTypes & (1 << 6)) {
-	/* blacklist malfunctioning device(s) */
-	if (!strncmp(dev->sane.model, "SCX-4500W", 9) ||
-            !strncmp(dev->sane.model, "C460", 4) ||
-	    !!strstr(dev->sane.model, "CLX-3170") ||
-            !!strstr(dev->sane.model, "4x24") ||
-            !!strstr(dev->sane.model, "4x28") ||
-	    !strncmp(dev->sane.model, "M288x", 5))
-	    return 0;
+        /* blacklist malfunctioning device(s) */
+        if (!strncmp (dev->sane.model, "SCX-4500W", 9)
+            || !strncmp (dev->sane.model, "C460", 4)
+            || !!strstr (dev->sane.model, "WorkCentre 3225")
+            || !!strstr (dev->sane.model, "CLX-3170")
+            || !!strstr (dev->sane.model, "4x24")
+            || !!strstr (dev->sane.model, "4x28")
+            || !strncmp (dev->sane.model, "M288x", 5))
+            return 0;
         return 1;
     } else
         return 0;
@@ -246,7 +247,7 @@ static void dbg_dump(struct device *dev)
     for (i = 0; i < dlen; i++, dptr += 3)
         sprintf(dptr, " %02x", dev->res[i]);
 
-    DBG(5, "[%lu]%s%s\n", (u_long)dev->reslen, dbuf,
+    DBG(5, "[%zu]%s%s\n", dev->reslen, dbuf,
         (dlen < (int)dev->reslen)? "..." : "");
 }
 
@@ -273,8 +274,8 @@ static int dev_command(struct device *dev, SANE_Byte *cmd, size_t reqlen)
     }
 
     dev->state = 0;
-    DBG(4, ":: dev_command(%s[%#x], %lu)\n", str_cmd(cmd[2]), cmd[2],
-        (u_long)reqlen);
+    DBG(4, ":: dev_command(%s[%#x], %zu)\n", str_cmd(cmd[2]), cmd[2],
+        reqlen);
     status = dev->io->dev_request(dev, cmd, sendlen, res, &dev->reslen);
     if (status != SANE_STATUS_GOOD) {
         DBG(1, "%s: dev_request: %s\n", __func__, sane_strstatus(status));
@@ -289,8 +290,8 @@ static int dev_command(struct device *dev, SANE_Byte *cmd, size_t reqlen)
 
     /* normal command reply, some sanity checking */
     if (dev->reslen < reqlen) {
-        DBG(1, "%s: illegal response len %lu, need %lu\n",
-            __func__, (u_long)dev->reslen, (u_long)reqlen);
+        DBG(1, "%s: illegal response len %zu, need %zu\n",
+            __func__, dev->reslen, reqlen);
         dev->state = SANE_STATUS_IO_ERROR;
         return 0;
     } else {
@@ -306,14 +307,14 @@ static int dev_command(struct device *dev, SANE_Byte *cmd, size_t reqlen)
         }
         pktlen = dev->res[2] + 3;
         if (dev->reslen != pktlen) {
-            DBG(2, "%s: illegal response len %lu, should be %lu\n",
-                __func__, (u_long)pktlen, (u_long)dev->reslen);
+            DBG(2, "%s: illegal response len %zu, should be %zu\n",
+                __func__, pktlen, dev->reslen);
             dev->state = SANE_STATUS_IO_ERROR;
             return 0;
         }
         if (dev->reslen > reqlen)
-            DBG(2, "%s: too big packet len %lu, need %lu\n",
-                __func__, (u_long)dev->reslen, (u_long)reqlen);
+            DBG(2, "%s: too big packet len %zu, need %zu\n",
+                __func__, dev->reslen, reqlen);
     }
 
     dev->state = 0;
@@ -1317,7 +1318,7 @@ sane_read(SANE_Handle h, SANE_Byte *buf, SANE_Int maxlen, SANE_Int *lenp)
         return SANE_STATUS_EOF;
 
     /* if there is no data to read or output from buffer */
-    if (!dev->blocklen && dev->datalen <= PADDING_SIZE) {
+    if (!dev->blocklen && (dev->datalen <= PADDING_SIZE || dev->final_block)) {
 
         /* copying uncompressed data */
         if (dev->composition == MODE_RGB24 &&
@@ -1329,6 +1330,13 @@ sane_read(SANE_Handle h, SANE_Byte *buf, SANE_Int maxlen, SANE_Int *lenp)
                 copy_decompress_data(dev, buf, bufLen, lenp)) {
 		if (lenp)
 		    dev->total_out_size += *lenp;
+                return SANE_STATUS_GOOD;
+            }
+        } else if (dev->composition != MODE_RGB24) {
+            int diff = dev->total_img_size - dev->total_out_size;
+            int bufLen = (diff < maxlen) ? diff : maxlen;
+            if (diff > 0 && copy_plain_trim(dev, buf, bufLen, lenp) > 0) {
+                dev->total_out_size += *lenp;
                 return SANE_STATUS_GOOD;
             }
         }
@@ -1381,23 +1389,27 @@ sane_read(SANE_Handle h, SANE_Byte *buf, SANE_Int maxlen, SANE_Int *lenp)
         int olen; /* output len */
 
         /* read as much data into the buffer */
-        datalen = DATAROOM(dev) & USB_BLOCK_MASK;
+        datalen = MIN(dev->blocklen, DATAROOM(dev) & USB_BLOCK_MASK);
         while (datalen && dev->blocklen) {
             SANE_Byte *rbuf = dev->data + DATATAIL(dev);
 
-            DBG(9, "<> request len: %lu, [%d, %d; %d]\n",
-                (u_long)datalen, dev->dataoff, DATATAIL(dev), dev->datalen);
+            DBG(9, "<> request len: %zu, [%d, %d; %d]\n",
+                datalen, dev->dataoff, DATATAIL(dev), dev->datalen);
+
             if ((status = dev->io->dev_request(dev, NULL, 0, rbuf, &datalen)) !=
                 SANE_STATUS_GOOD)
                 return status;
+
             dev->datalen += datalen;
             dev->blocklen -= datalen;
-            DBG(9, "<> got %lu, [%d, %d; %d]\n",
-                (u_long)datalen, dev->dataoff, DATATAIL(dev), dev->datalen);
+
+            DBG(9, "<> got %zu, [%d, %d; %d]\n",
+                datalen, dev->dataoff, DATATAIL(dev), dev->datalen);
+
             if (dev->blocklen < 0)
                 return ret_cancel(dev, SANE_STATUS_IO_ERROR);
 
-            datalen = DATAROOM(dev) & USB_BLOCK_MASK;
+            datalen = MIN(dev->blocklen, DATAROOM(dev) & USB_BLOCK_MASK);
         }
 
         if (buf && lenp) { /* read mode */

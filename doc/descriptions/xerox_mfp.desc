@@ -43,6 +43,12 @@
 :usbid "0x0924" "0x42dc"
 :status :good
 
+:model "WorkCentre 3335"
+:interface "USB"
+:usbid "0x0924" "0x42e2"
+:status :basic
+:comment "When scanning from automatic feeder, only the first page is scanned"
+
 :mfg "Dell"
 :url "http://www.dell.com/"
 
@@ -54,6 +60,11 @@
 :model "Dell 1235cn"
 :interface "USB"
 :usbid "0x413c" "0x5310"
+:status :good
+
+:model "Dell 1135n"
+:interface "USB Ethernet"
+:usbid "0x413c" "0x5318"
 :status :good
 
 :mfg "Samsung"
