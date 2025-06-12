@@ -248,8 +248,16 @@ AC_DEFUN([SANE_CHECK_PTHREAD],
     AC_DEFINE(PTHREAD_T_IS_INTEGER, 1,
               [Define if pthread_t is integer.])
   else
-    # Until the sanei_thread implementation is fixed.
-    use_pthread=no
+    case "$host_os" in
+      darwin*)
+        # Always use pthreads on macOS
+        use_pthread=yes
+        ;;
+      *)
+        # Until the sanei_thread implementation is fixed.
+        use_pthread=no
+        ;;
+    esac
   fi
 
   if test "$have_pthread" = "yes" ; then
@@ -471,6 +479,7 @@ AC_DEFUN([SANE_CHECK_IPV6],
   if test "$ipv6" != "no" ; then
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 	#define INET6
+	#include <stdlib.h>
 	#include <sys/types.h>
 	#include <sys/socket.h> ]], [[
 	 /* AF_INET6 available check */
@@ -492,6 +501,7 @@ AC_DEFUN([SANE_CHECK_IPV6],
     AC_MSG_CHECKING([whether struct sockaddr_storage has an ss_family member])
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 	#define INET6
+	#include <stdlib.h>
 	#include <sys/types.h>
 	#include <sys/socket.h> ]], [[
 	/* test if the ss_family member exists in struct sockaddr_storage */
@@ -504,6 +514,7 @@ AC_DEFUN([SANE_CHECK_IPV6],
     ], [
 		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 		#define INET6
+		#include <stdlib.h>
 		#include <sys/types.h>
 		#include <sys/socket.h> ]], [[
 		/* test if the __ss_family member exists in struct sockaddr_storage */

@@ -136,9 +136,21 @@
 :status :untested
 :comment "Testers needed!"
 
+:model "G2030 series"
+:interface "USB"
+:usbid "0x04a9" "0x1106"
+:status :untested
+:comment "Testers needed!"
+
 :model "PIXMA G2060"
 :interface "USB"
 :usbid "0x04a9" "0x18c1"
+:status :untested
+:comment "Testers needed!"
+
+:model "G2070 series"
+:interface "USB"
+:usbid "0x04a9" "0x18f5"
 :status :untested
 :comment "Testers needed!"
 
@@ -166,9 +178,21 @@
 :status :untested
 :comment "Testers needed!"
 
+:model "G3030 series"
+:interface "USB"
+:usbid "0x04a9" "0x1105"
+:status :untested
+:comment "Testers needed!"
+
 :model "PIXMA G3060"
 :interface "USB"
 :usbid "0x04a9" "0x18c3"
+:status :untested
+:comment "Testers needed!"
+
+:model "G3070 series"
+:interface "USB"
+:usbid "0x04a9" "0x18f4"
 :status :untested
 :comment "Testers needed!"
 
@@ -181,6 +205,12 @@
 :model "PIXMA G4010 Series"
 :interface "USB WiFi"
 :usbid "0x04a9" "0x183d"
+:status :untested
+:comment "Testers needed!"
+
+:model "G4070 series"
+:interface "USB"
+:usbid "0x04a9" "0x18f3"
 :status :untested
 :comment "Testers needed!"
 
@@ -226,9 +256,39 @@
 :status :untested
 :comment "Testers needed!"
 
+:model "PIXMA GX1000 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x110b"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA GX2000 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x110d"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA GX3000 Series"
+:interface "USB"
+:usbid "0x04a9" "0x18f1"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA GX4000"
+:interface "USB"
+:usbid "0x04a9" "0x18f2"
+:status :untested
+:comment "Testers needed!"
+
 :model "PIXMA GX6000 Series"
-:interface "USB Ethernet WiFi"
+:interface "USB"
 :usbid "0x04a9" "0x18a6"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA GX6500 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1148"
 :status :untested
 :comment "Testers needed!"
 
@@ -935,6 +995,18 @@
 :status :complete
 :comment "Flatbed and ADF scan. All resolutions supported (up to 4800DPI)"
 
+:model "TC-20M"
+:interface "USB"
+:usbid "0x04a9" "0x18fc"
+:status :untested
+:comment "Testers needed!"
+
+:model "TC-5200M"
+:interface "USB"
+:usbid "0x04a9" "0x18ff"
+:status :untested
+:comment "Testers needed!"
+
 :model "PIXMA TR4500 Series"
 :interface "USB WiFi"
 :usbid "0x04a9" "0x1854"
@@ -974,6 +1046,12 @@
 :model "PIXMA TR7600 Series"
 :interface "USB"
 :usbid "0x04a9" "0x18aa"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA TR7800 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1151"
 :status :untested
 :comment "Testers needed!"
 
@@ -1163,6 +1241,18 @@
 :status :good
 :comment "All resolutions supported (up to 1200DPI). WiFi not tested by Pixma as yet."
 
+:model "PIXMA TS6630 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x114e"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA TS6730 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1150"
+:status :untested
+:comment "Testers needed!"
+
 :model "PIXMA TS7330 Series"
 :interface "USB WiFi"
 :usbid "0x04a9" "0x188f"
@@ -1190,6 +1280,30 @@
 :model "PIXMA TS7530 Series"
 :interface "USB"
 :usbid "0x04a9" "0x18e1"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA TS7600i series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x114f"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA TS7700 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x110f"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA TS7700A series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1111"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA TS7700i series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1152"
 :status :untested
 :comment "Testers needed!"
 
@@ -1265,6 +1379,18 @@
 :status :untested
 :comment "Testers needed!"
 
+:model "PIXMA TS8630 Series"
+:interface "USB"
+:usbid "0x04a9" "0x18f8"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXMA TS8700 series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1118"
+:status :untested
+:comment "Testers needed!"
+
 :model "PIXMA TS9000 Series"
 :interface "USB WiFi"
 :usbid "0x04a9" "0x179f"
@@ -1334,6 +1460,18 @@
 :model "PIXUS XK100 Series"
 :interface "USB WiFi"
 :usbid "0x04a9" "0x18e2"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXUS XK110 Series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x18f9"
+:status :untested
+:comment "Testers needed!"
+
+:model "PIXUS XK120 Series"
+:interface "USB WiFi"
+:usbid "0x04a9" "0x1119"
 :status :untested
 :comment "Testers needed!"
 
@@ -1504,6 +1642,12 @@
 :usbid "0x04a9" "0x27fc"
 :status :complete
 :comment "Flatbed and ADF scan. All resolutions supported (up to 600DPI)."
+
+:model "i-SENSYS MF750 Series"
+:interface "USB Ethernet WiFi"
+:usbid "0x04a9" "0x2885"
+:status :untested
+:comment "Testers needed!"
 
 :model "i-SENSYS MF810/820"
 :interface "USB Ethernet"

@@ -107,7 +107,6 @@ sanei_init_debug (const char * backend, int * var)
   DBG (0, "Setting debug level of %s to %d.\n", backend, *var);
 }
 
-#if defined(LOG_DEBUG)
 static int
 is_socket (int fd)
 {
@@ -123,7 +122,6 @@ is_socket (int fd)
   return 0;
 #endif
 }
-#endif
 
 void
 sanei_debug_msg
