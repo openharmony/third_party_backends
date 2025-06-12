@@ -65,7 +65,8 @@
 #include <time.h>
 
 #if WITH_USB_RECORD_REPLAY
-#include "libxml/tree.h"
+#include <libxml/parser.h>
+#include <libxml/tree.h>
 #endif
 
 #ifdef HAVE_RESMGR
@@ -81,7 +82,7 @@
 #endif /* HAVE_LIBUSB_LEGACY */
 
 #ifdef HAVE_LIBUSB
-#include "libusb.h"
+#include <libusb.h>
 #endif /* HAVE_LIBUSB */
 
 #ifdef HAVE_USBCALLS

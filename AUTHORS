@@ -24,7 +24,7 @@ Backends:
  dc240:         Peter Fales
  dell1600n_net: Jon Chambers
  dll:           David Mosberger
- dmc:           David F. Skoll
+ dmc:           Dianne Skoll
  epjitsu:       m. allan noah (*)
  epson:         Karl Heinz Kremer
  epson2:        Alessandro Zummo, Wolfram Sang (*)
@@ -56,6 +56,7 @@ Backends:
  kvs40xx:       Panasonic Russia Ltd
  leo:           Frank Zago
  lexmark:       Fred Odendaal, Stéphane Voltz
+ lexmark_x2600: Benoit Juin
  ma1509:        Henning Geinitz
  magicolor:     Reinhold Kainhofer(based on epson2 backend)
  matsushita:    Frank Zago
@@ -77,7 +78,7 @@ Backends:
                 Nicolas Martin
                 Louis Lagendijk (*)
                 Dennis Lou
-                Rolf Bensch (*)
+                Rolf Bensch
                 Povilas Kanapickas (*)
  plustek:       Gerhard Jaeger (*)
  plustek_pp:    Rick Bronson (former pp driver-code), Gerhard Jaeger (*)
@@ -158,6 +159,7 @@ Andreas Czechanowski <m075@ins.uni-stuttgart.de>
 Andreas Nowack <nowack.andreas@gmx.de>
 Andreas Rick <andreas.rick@free.fr>
 Andrew Kuchling <amk@magnet.com>
+Benoit Juin <benoit.juin@gmail.com>
 Bernd Schroeder <bernd@aquila.muc.de>
 Bertrik Sikken <bertrik@zonnet.nl>
 Brian J. Murrell <brian@interlinx.bc.ca>
@@ -165,10 +167,10 @@ Chris Bagwell <cbagwell-guest@users.alioth.debian.org>
 Chris Pinkham <cpinkham@corp.infi.net>
 Christian Bucher <cbucher@vernetzt.at>
 David Etherton <etherton@netcom.com>
-David F. Skoll <dskoll@iname.com>
 David Huggins-Daines <bn711@freenet.carleton.ca>
 David Mosberger <David.Mosberger@acm.org>
 David Stevenson <david.stevenson@zoom.co.uk>
+Dianne Skoll <dianne@skoll.ca>
 Didier Carlier <didier@sema.be>
 Earle F. Philhower III <earle@ziplabel.com>
 Eddy De Greef <eddy_de_greef at scarlet dot be>

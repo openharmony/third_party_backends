@@ -61,7 +61,7 @@ homepage.
 .SH "GENERAL INFORMATION"
 The following sections provide short descriptions and links to more
 information about several aspects of
-.B SANE.
+.BR SANE .
 A name with a number in parenthesis (e.g.
 .BR sane\-dll (5))
 points to a manual page. In this case
@@ -365,6 +365,11 @@ for details.
 .B lexmark
 Supports the Lexmark X1100 series of USB scanners. See
 .BR sane\-lexmark (5)
+for details.
+.TP
+.B lexmark_x2600
+Supports the Lexmark X2600 series of USB scanners. See
+.BR sane\-lexmark_x2600 (5)
 for details.
 .TP
 .B ma1509
@@ -818,7 +823,7 @@ So now scanning with
 works and you want to use one of the graphical frontends like
 .BR xsane (1) ,
 .BR xscanimage (1) ", or"
-.B quiteinsane (1)
+.BR quiteinsane (1)
 but those frontends don't detect your scanner? One reason may be that you
 installed two versions of
 .BR SANE .
@@ -905,6 +910,7 @@ for details).
 .BR sane\-kodak (5),
 .BR sane\-leo (5),
 .BR sane\-lexmark (5),
+.BR sane\-lexmark_x2600 (5),
 .BR sane\-ma1509 (5),
 .BR sane\-matsushita (5),
 .BR sane\-microtek2 (5),

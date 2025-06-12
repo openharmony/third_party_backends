@@ -9,8 +9,6 @@
 
 #include <sane/sanei.h>
 
-#include "hilog/log.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -81,11 +79,7 @@ extern void sanei_debug_ndebug (int level, const char *msg, ...);
 
 # define DBG_LEVEL	(0)
 # define DBG_INIT()
-#ifndef ENABLE_HILOG
 # define DBG		sanei_debug_ndebug
-#else
-# define DBG(level, ...)    ((void)HiLogPrint(LOG_APP, LOG_INFO, 0, "sanekit", __VA_ARGS__))
-#endif
 # define IF_DBG(x)
 
 #else /* !NDEBUG */
