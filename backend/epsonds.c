@@ -1259,6 +1259,9 @@ const  epsonds_profile_map epsonds_models_predefined[] = {
   {0x118A, "PID 118A","L3250 Series", 7},
   {0x119B, "PID 119B","XP-2150 Series", 7},
   {0x11B1, "PID 11B1","XP-2200 Series", 7},
+  {0x0193, "ES-C220","ES-C220", 5},
+  {0x018F, "DS-C330","DS-C330", 5},
+  {0x0191, "DS-C490","DS-C490", 5},
   {0x00, "","", 0x00 }
 };
 
@@ -1971,6 +1974,7 @@ init_options(epsonds_scanner *s)
 	}
 
 	/* "Geometry" group: */
+	s->opt[OPT_GEOMETRY_GROUP].name = "";
 	s->opt[OPT_GEOMETRY_GROUP].title = SANE_I18N("Geometry");
 	s->opt[OPT_GEOMETRY_GROUP].desc = "";
 	s->opt[OPT_GEOMETRY_GROUP].type = SANE_TYPE_GROUP;
@@ -2020,6 +2024,7 @@ init_options(epsonds_scanner *s)
 	s->val[OPT_BR_Y].w = s->hw->y_range->max;
 
 	/* "Optional equipment" group: */
+	s->opt[OPT_EQU_GROUP].name = "";
 	s->opt[OPT_EQU_GROUP].title = SANE_I18N("Optional equipment");
 	s->opt[OPT_EQU_GROUP].desc = "";
 	s->opt[OPT_EQU_GROUP].type = SANE_TYPE_GROUP;
@@ -2263,6 +2268,7 @@ getvalue(SANE_Handle handle, SANE_Int option, void *value)
 	case OPT_BR_Y:
 	case OPT_DEPTH:
 	case OPT_ADF_SKEW:
+	case OPT_ADF_CRP:
 		*((SANE_Word *) value) = sval->w;
 		break;
 
