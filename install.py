@@ -24,7 +24,8 @@ import shutil
 def apply_patch(source_dir):
     patch_list = [
         'modifying_driver_search_path.patch',
-        'dll.c.patch',
+        'add_thread_poll.patch',
+        'hilog_debug.patch',
     ]
 
     for patch in patch_list:
