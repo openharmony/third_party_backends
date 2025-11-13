@@ -1,5 +1,5 @@
 diff --git a/backend/dll.c b/backend/dll.c
-index bf34c4f6d..9b13d3a59 100644
+index bf34c4f6d..7a505d13f 100644
 --- a/backend/dll.c
 +++ b/backend/dll.c
 @@ -292,6 +292,46 @@ static const char *op_name[] = {
@@ -102,17 +102,16 @@ index bf34c4f6d..9b13d3a59 100644
    fp = sanei_config_open (DLL_ALIASES_FILE);
    if (!fp)
      return SANE_STATUS_GOOD;	/* don't insist on aliases file */
-diff --git a/include/sane/config.h b/include/sane/config.h
-index 20dfa104b..206a4147e 100644
---- a/include/sane/config.h
-+++ b/include/sane/config.h
-@@ -209,6 +209,9 @@
- /* Define to 1 if you have libusb-1.0 */
- #define HAVE_LIBUSB 1
+@@ -1284,6 +1353,12 @@ sane_open (SANE_String_Const full_name, SANE_Handle * meta_handle)
+     }
+   free(be_name);
  
-+/* Define to 1 if you have scan_service */
-+#define HAVE_SCAN_SERVICE 1
++  if (!be)
++    {
++      DBG (3, "sane_open: be is nullptr\n");
++      return SANE_STATUS_NO_MEM;
++    }
 +
- /* Define to 1 if you have libusb-0.1 */
- /* #undef HAVE_LIBUSB_LEGACY */
- 
+   if (!be->inited)
+     {
+       status = init (be);

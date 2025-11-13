@@ -1,0 +1,27 @@
+diff --git a/include/sane/sanei_debug.h b/include/sane/sanei_debug.h
+index 465d3e25e..b18da651c 100644
+--- a/include/sane/sanei_debug.h
++++ b/include/sane/sanei_debug.h
+@@ -8,7 +8,9 @@
+ #define _SANEI_DEBUG_H
+ 
+ #include <sane/sanei.h>
+-
++#ifdef ENABLE_HILOG
++#include "hilog/log.h"
++#endif // ENABLE_HILOG
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+@@ -79,7 +81,11 @@ extern void sanei_debug_ndebug (int level, const char *msg, ...);
+ 
+ # define DBG_LEVEL	(0)
+ # define DBG_INIT()
++#ifndef ENABLE_HILOG
+ # define DBG		sanei_debug_ndebug
++#else
++# define DBG(level, ...)    ((void)HiLogPrint(LOG_APP, LOG_INFO, 0, "sanekit", __VA_ARGS__))
++#endif // ENABLE_HILOG
+ # define IF_DBG(x)
+ 
+ #else /* !NDEBUG */
