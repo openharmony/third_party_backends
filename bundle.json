@@ -1,7 +1,7 @@
 {
     "name": "@ohos/backends",
     "description": "SANE(Scanner Access Now Easy) is a framework for standardized access to any raster scanner",
-    "version": "1.3.1",
+    "version": "1.4.0",
     "license": "GPL v2",
     "publishAs":"code-segment",
     "segment":{
