@@ -23,6 +23,7 @@
         "deps": {
             "components": [
                 "hilog",
+                "c_utils",
                 "libusb"
             ],
             "third_party": [

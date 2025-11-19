@@ -1,0 +1,269 @@
+diff --git a/backend/dll.c b/backend/dll.c
+index 7a505d13f..120dcf7e5 100644
+--- a/backend/dll.c
++++ b/backend/dll.c
+@@ -292,6 +292,26 @@ static const char *op_name[] = {
+ };
+ #endif /* __BEOS__ */
+ 
++#ifdef HAVE_THREAD_POLL
++
++#include "threadpool_c.h"
++
++typedef struct backend_task {
++    struct backend *be;
++    SANE_Bool local_only;
++    const SANE_Device **be_list;
++    SANE_Status status;
++    int num_devs;
++    SANE_Device **devices;
++    int device_count;
++} backend_task_t;
++
++static threadpool_handle_t* pool = NULL;
++
++static const int max_thread_number = 20;
++
++#endif // HAVE_THREAD_POLL
++
+ #if defined(HAVE_SCAN_SERVICE)
+ static int has_suffix(const char *filename, const char *suffix)
+ {
+@@ -1052,6 +1072,13 @@ sane_exit (void)
+ 
+   DBG (2, "sane_exit: exiting\n");
+ 
++#ifdef HAVE_THREAD_POLL
++if (pool) {
++    threadpool_destroy(pool);
++    pool = NULL;
++}
++#endif // HAVE_THREAD_POLL
++
+   for (be = first_backend; be; be = next)
+     {
+       next = be->next;
+@@ -1123,6 +1150,7 @@ sane_exit (void)
+   DBG (3, "sane_exit: finished\n");
+ }
+ 
++#ifndef HAVE_THREAD_POLL
+ /* Note that a call to get_devices() implies that we'll have to load
+    all backends.  To avoid this, you can call sane_open() directly
+    (assuming you know the name of the backend/device).  This is
+@@ -1238,6 +1266,215 @@ sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
+   return SANE_STATUS_GOOD;
+ }
+ 
++#else
++static void process_backend_task(void *arg) {
++    backend_task_t *task = (backend_task_t *)arg;
++    if (!task || !task->be) {
++        DBG (1, "process_backend_task: parameter is null\n");
++        return;
++    }
++    struct backend *be = task->be;
++    SANE_Status status;
++    char *full_name;
++    int i, num_devs;
++    size_t len;
++    
++    if (!be->inited) {
++        if (init(be) != SANE_STATUS_GOOD) {
++            task->status = SANE_STATUS_INVAL;
++            return;
++        }
++    }
++    if (be->name) {
++      DBG (1, "process_backend_task: driver [%s] sane_get_devices begin\n", be->name);
++    }
++    status = (*(op_get_devs_t)be->op[OP_GET_DEVS]) (&task->be_list, task->local_only);
++    if (be->name) {
++      DBG (1, "process_backend_task: driver [%s] sane_get_devices end\n", be->name);
++    }
++    task->status = status;
++    
++    if (status != SANE_STATUS_GOOD || !task->be_list) {
++        DBG (1, "process_backend_task: driver [%s] sane_get_devices fail, ret = %d\n", be->name, (int)status);
++        return;
++    }
++
++    for (task->num_devs = 0; task->be_list[task->num_devs]; ++task->num_devs);
++
++    task->devices = malloc(task->num_devs * sizeof(SANE_Device*));
++    if (!task->devices) {
++        task->status = SANE_STATUS_NO_MEM;
++        return;
++    }
++    task->device_count = 0;
++
++    for (i = 0; i < task->num_devs; ++i) {
++        SANE_Device *dev;
++        char *mem;
++        struct alias *alias;
++
++        for (alias = first_alias; alias != NULL; alias = alias->next) {
++            len = strlen(be->name);
++            if (strlen(alias->oldname) <= len)
++                continue;
++            if (strncmp(alias->oldname, be->name, len) == 0
++                && alias->oldname[len] == ':'
++                && strcmp(&alias->oldname[len + 1], task->be_list[i]->name) == 0)
++                break;
++        }
++
++        if (alias) {
++            if (!alias->newname) {
++                continue;
++            }
++
++            len = strlen(alias->newname);
++            mem = malloc(sizeof(*dev) + len + 1);
++            if (!mem) {
++                task->status = SANE_STATUS_NO_MEM;
++                for (int j = 0; j < task->device_count; j++) {
++                    free(task->devices[j]);
++                }
++                free(task->devices);
++                task->devices = NULL;
++                return;
++            }
++
++            full_name = mem + sizeof(*dev);
++            strcpy(full_name, alias->newname);
++        } else {
++            len = strlen(be->name) + 1 + strlen(task->be_list[i]->name);
++            mem = malloc(sizeof(*dev) + len + 1);
++            if (!mem) {
++                task->status = SANE_STATUS_NO_MEM;
++                for (int j = 0; j < task->device_count; j++) {
++                    free(task->devices[j]);
++                }
++                free(task->devices);
++                task->devices = NULL;
++                return;
++            }
++
++            full_name = mem + sizeof(*dev);
++            strcpy(full_name, be->name);
++            strcat(full_name, ":");
++            strcat(full_name, task->be_list[i]->name);
++        }
++
++        dev = (SANE_Device *) mem;
++        dev->name = full_name;
++        dev->vendor = task->be_list[i]->vendor;
++        dev->model = task->be_list[i]->model;
++        dev->type = task->be_list[i]->type;
++
++        task->devices[task->device_count++] = dev;
++    }
++}
++
++SANE_Status
++sane_get_devices (const SANE_Device *** device_list, SANE_Bool local_only)
++{
++    const SANE_Device **be_list;
++    struct backend *be;
++    SANE_Status status;
++    char *full_name;
++    int i, num_devs;
++    size_t len;
++    #define ASSERT_SPACE(n) do                                                 \
++    {                                                                        \
++        if (devlist_len + (n) > devlist_size)                                  \
++        {                                                                    \
++            devlist_size += (n) + 15;                                          \
++            if (devlist)                                                       \
++            devlist = realloc (devlist, devlist_size * sizeof (devlist[0])); \
++            else                                                               \
++            devlist = malloc (devlist_size * sizeof (devlist[0]));           \
++            if (!devlist)                                                      \
++            return SANE_STATUS_NO_MEM;                                       \
++        }                                                                    \
++    } while (0)
++    
++    DBG (3, "sane_get_devices\n");
++
++    if (devlist)
++        for (i = 0; i < devlist_len; ++i)
++            free ((void *) devlist[i]);
++    devlist_len = 0;
++
++    int backend_count = 0;
++    for (be = first_backend; be; be = be->next) {
++        backend_count++;
++    }
++
++    if (backend_count == 0) {
++        ASSERT_SPACE (1);
++        devlist[devlist_len++] = 0;
++        *device_list = (const SANE_Device **) devlist;
++        return SANE_STATUS_GOOD;
++    }
++
++    backend_task_t *tasks = malloc(backend_count * sizeof(backend_task_t));
++    if (!tasks) {
++        return SANE_STATUS_NO_MEM;
++    }
++    if (pool == NULL) {
++        int discoverThreadNum = backend_count < max_thread_number ? backend_count : max_thread_number;
++        pool = threadpool_create(discoverThreadNum);
++    }
++    int task_index = 0;
++    for (be = first_backend; be; be = be->next, task_index++) {
++        tasks[task_index].be = be;
++        tasks[task_index].local_only = local_only;
++        tasks[task_index].be_list = NULL;
++        tasks[task_index].status = SANE_STATUS_GOOD;
++        tasks[task_index].num_devs = 0;
++        tasks[task_index].devices = NULL;
++        tasks[task_index].device_count = 0;
++        
++        if (!threadpool_add_task(pool, process_backend_task, &tasks[task_index])) {
++            DBG(1, "Failed to add task for backend %s\n", be->name);
++            tasks[task_index].status = SANE_STATUS_IO_ERROR;
++        }
++    }
++
++    threadpool_wait(pool);
++    
++    int total_devices = 0;
++    for (task_index = 0; task_index < backend_count; task_index++) {
++        if (tasks[task_index].status == SANE_STATUS_GOOD && tasks[task_index].devices) {
++            total_devices += tasks[task_index].device_count;
++        }
++    }
++
++    ASSERT_SPACE(total_devices);
++
++    for (task_index = 0; task_index < backend_count; task_index++) {
++        backend_task_t *task = &tasks[task_index];
++        
++        if (task->status != SANE_STATUS_GOOD || !task->devices) {
++            continue;
++        }
++
++        for (i = 0; i < task->device_count; i++) {
++            devlist[devlist_len++] = task->devices[i];
++        }
++        
++        free(task->devices);
++    }
++
++    free(tasks);
++    threadpool_destroy(pool);
++    pool = NULL;
++
++    ASSERT_SPACE (1);
++    devlist[devlist_len++] = 0;
++
++    *device_list = (const SANE_Device **) devlist;
++    DBG (3, "sane_get_devices: found %d devices\n", devlist_len - 1);
++    return SANE_STATUS_GOOD;
++}
++#endif // HAVE_THREAD_POLL
++
+ SANE_Status
+ sane_open (SANE_String_Const full_name, SANE_Handle * meta_handle)
+ {

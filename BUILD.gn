@@ -21,6 +21,8 @@ SANE_LIB_DIR = "/data/service/el1/public/print_service/sane/backend"
 SANE_V_MAJOR = 1
 SANE_V_MINOR = 2
 enable_hilog = true
+enable_thread_pool = true
+enable_scan_service = true
 source_dir = "//third_party/backends"
 target_dir = "${target_gen_dir}/sane"
 
@@ -29,7 +31,8 @@ action("backends_action") {
   script = "//third_party/backends/install.py"
   inputs = [
     "${source_dir}/patches/modifying_driver_search_path.patch",
-    "${source_dir}/patches/dll.c.patch",
+    "${source_dir}/patches/add_thread_poll.patch",
+    "${source_dir}/patches/hilog_debug.patch",
   ]
   outputs = [
     "${target_dir}/include/config.h",
@@ -67,6 +70,14 @@ config("backends_private_config") {
 
   if (enable_hilog) {
     cflags += [ "-DENABLE_HILOG" ]
+  }
+
+  if (enable_thread_pool) {
+    cflags += [ "-DHAVE_THREAD_POLL"]
+  }
+
+  if (enable_scan_service) {
+    cflags += [ "-DHAVE_SCAN_SERVICE"]
   }
 
   defines = [
@@ -185,6 +196,33 @@ ohos_source_set("sane_strstatus") {
   part_name = "backends"
 }
 
+
+ohos_source_set("threadpool_c") {
+  sources = [
+    "threadpool/src/threadpool_c.cpp",
+    "threadpool/src/threadpool_wrapper.cpp"
+  ]
+
+  include_dirs = [
+    "threadpool/include",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+  ]
+  
+  if (enable_hilog) {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  public_configs = [ ":backends_public_config" ]
+
+  configs = [ ":backends_private_config" ]
+
+  subsystem_name = "thirdparty"
+  part_name = "backends"
+}
+
 ohos_shared_library("sane") {
   sources = [
     "./backend/dll.c",
@@ -206,6 +244,13 @@ ohos_shared_library("sane") {
     ":sanei_init_debug",
     ":sanei_usb",
   ]
+
+  include_dirs = []
+
+  if (enable_thread_pool) {
+    deps += [ ":threadpool_c" ]
+    include_dirs += [ "threadpool/include" ]
+  }
 
   if (enable_hilog) {
     external_deps = [ "hilog:libhilog" ]
