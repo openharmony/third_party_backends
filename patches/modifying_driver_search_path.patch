@@ -1,8 +1,8 @@
 diff --git a/backend/dll.c b/backend/dll.c
-index bf34c4f6d..7a505d13f 100644
+index bf34c4f6d..f7ae2bcdb 100644
 --- a/backend/dll.c
 +++ b/backend/dll.c
-@@ -292,6 +292,46 @@ static const char *op_name[] = {
+@@ -292,6 +292,48 @@ static const char *op_name[] = {
  };
  #endif /* __BEOS__ */
  
@@ -21,8 +21,10 @@ index bf34c4f6d..7a505d13f 100644
 +        DBG(2, "%s: input parameter is a nullptr.\n", __func__);
 +        return;
 +    }
-+    char driver[PATH_MAX] = {0};
-+    snprintf (driver, sizeof (driver), "libsane-%s.z.so", drivername);
++    char driver_name_with_z_so[PATH_MAX] = {0};
++    snprintf (driver_name_with_z_so, sizeof (driver_name_with_z_so), "libsane-%s.z.so", drivername);
++    char driver_name_with_so[PATH_MAX] = {0};
++    snprintf (driver_name_with_so, sizeof (driver_name_with_so), "libsane-%s.so", drivername);
 +    DIR *backends_dir = opendir(dir);
 +    if (backends_dir == NULL) {
 +        DBG(2, "open dir %s error\n", backends_dir);
@@ -35,7 +37,7 @@ index bf34c4f6d..7a505d13f 100644
 +            memset(full_path, 0, PATH_MAX);
 +            snprintf(full_path, PATH_MAX, "%s/" "%s", dir, entry->d_name);
 +            DBG(1, "full_path %s\n", full_path);
-+            if (has_suffix(full_path, driver)) {
++            if (has_suffix(full_path, driver_name_with_z_so) || has_suffix(full_path, driver_name_with_so)) {
 +                memset(libname, 0, PATH_MAX);
 +                strncpy(libname, full_path, PATH_MAX);
 +                break;
@@ -49,7 +51,7 @@ index bf34c4f6d..7a505d13f 100644
  static void *
  op_unsupported (void)
  {
-@@ -498,6 +538,8 @@ load (struct backend *be)
+@@ -498,6 +540,8 @@ load (struct backend *be)
        snprintf (libname, sizeof (libname), "%s/" PREFIX "%.2s%.5s" POSTFIX,
  		dir, be->name, strlen(be->name)>7 ? (be->name)+strlen(be->name)-5 :
                                              (be->name)+2, V_MAJOR);
@@ -58,7 +60,7 @@ index bf34c4f6d..7a505d13f 100644
  #else
        snprintf (libname, sizeof (libname), "%s/" PREFIX "%s" POSTFIX,
  		dir, be->name, V_MAJOR);
-@@ -807,6 +849,30 @@ read_config (const char *conffile)
+@@ -807,6 +851,30 @@ read_config (const char *conffile)
    fclose (fp);
  }
  
@@ -89,7 +91,7 @@ index bf34c4f6d..7a505d13f 100644
  static void
  read_dlld (void)
  {
-@@ -931,8 +997,11 @@ sane_init (SANE_Int * version_code, SANE_Auth_Callback authorize)
+@@ -931,8 +999,11 @@ sane_init (SANE_Int * version_code, SANE_Auth_Callback authorize)
     * Read dll.d first, so that the extras backends will be tried last
     */
    read_dlld ();
@@ -102,7 +104,7 @@ index bf34c4f6d..7a505d13f 100644
    fp = sanei_config_open (DLL_ALIASES_FILE);
    if (!fp)
      return SANE_STATUS_GOOD;	/* don't insist on aliases file */
-@@ -1284,6 +1353,12 @@ sane_open (SANE_String_Const full_name, SANE_Handle * meta_handle)
+@@ -1284,6 +1355,12 @@ sane_open (SANE_String_Const full_name, SANE_Handle * meta_handle)
      }
    free(be_name);
  
