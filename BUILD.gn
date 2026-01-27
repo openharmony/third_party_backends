@@ -26,29 +26,74 @@ enable_scan_service = true
 source_dir = "//third_party/backends"
 target_dir = "${target_gen_dir}/sane"
 
+backends_generated_sources = [
+  "${target_dir}/backend/dll.c",
+  "${target_dir}/threadpool/src/threadpool_c.cpp",
+  "${target_dir}/threadpool/src/threadpool_wrapper.cpp",
+  "${target_dir}/sanei/sanei_usb.c",
+  "${target_dir}/sanei/sanei_directio.c",
+  "${target_dir}/sanei/sanei_ab306.c",
+  "${target_dir}/sanei/sanei_constrain_value.c",
+  "${target_dir}/sanei/sanei_init_debug.c",
+  "${target_dir}/sanei/sanei_net.c",
+  "${target_dir}/sanei/sanei_wire.c",
+  "${target_dir}/sanei/sanei_codec_ascii.c",
+  "${target_dir}/sanei/sanei_codec_bin.c",
+  "${target_dir}/sanei/sanei_scsi.c",
+  "${target_dir}/sanei/sanei_config.c",
+  "${target_dir}/sanei/sanei_config2.c",
+  "${target_dir}/sanei/sanei_pio.c",
+  "${target_dir}/sanei/sanei_pa4s2.c",
+  "${target_dir}/sanei/sanei_auth.c",
+  "${target_dir}/sanei/sanei_thread.c",
+  "${target_dir}/sanei/sanei_pv8630.c",
+  "${target_dir}/sanei/sanei_pp.c",
+  "${target_dir}/sanei/sanei_lm983x.c",
+  "${target_dir}/sanei/sanei_access.c",
+  "${target_dir}/sanei/sanei_tcp.c",
+  "${target_dir}/sanei/sanei_udp.c",
+  "${target_dir}/sanei/sanei_magic.c",
+  "${target_dir}/sanei/sanei_ir.c",
+  "${target_dir}/sanei/sanei_jpeg.c",
+  "${target_dir}/backend/sane_strstatus.c",
+  "${target_dir}/backend/stubs.c",
+  "${target_dir}/lib/md5.c"
+]
+
+backends_generated_header = [
+  "${target_dir}/include/sane/sanei_debug.h",
+  "${target_dir}/threadpool/include/threadpool_c.h",
+  "${target_dir}/threadpool/include/threadpool_wrapper.h",
+]
+
 action("backends_action") {
   print("backends_action is exec")
   script = "//third_party/backends/install.py"
   inputs = [
+    "${source_dir}/install.py",
     "${source_dir}/patches/modifying_driver_search_path.patch",
     "${source_dir}/patches/add_thread_poll.patch",
     "${source_dir}/patches/hilog_debug.patch",
   ]
-  outputs = [
-    "${target_dir}/include/config.h",
-    "${target_dir}/src/dll.c",
-  ]
+  outputs = []
+  outputs += backends_generated_sources
+  outputs += backends_generated_header
+  
   backends_source_dir = rebase_path("${source_dir}", root_build_dir)
+  backends_target_dir = rebase_path("${target_dir}", root_build_dir)
+  
   args = [
     "--source-dir",
-    "$backends_source_dir",
+    backends_source_dir,
+    "--target-dir",
+    backends_target_dir,
   ]
 }
 
 config("backends_public_config") {
   include_dirs = [
-    "./include",
-    "./include/sane",
+    "${target_dir}/include",
+    "${target_dir}/include/sane",
   ]
 }
 
@@ -93,7 +138,11 @@ config("backends_private_config") {
 
 #build targets in /lib
 ohos_source_set("lib") {
-  sources = [ "./lib/md5.c" ]
+  sources = [ "${target_dir}/lib/md5.c" ]
+
+  deps = [
+    ":backends_action",
+  ]
 
   public_configs = [ ":backends_public_config" ]
 
@@ -132,13 +181,17 @@ sanei_names = [
 ]
 
 ohos_source_set("sanei_usb") {
-  sources = [ "./sanei/sanei_usb.c" ]
+  sources = [ "${target_dir}/sanei/sanei_usb.c" ]
 
   external_deps = [ "libusb:libusb" ]
 
   if (enable_hilog) {
     external_deps += [ "hilog:libhilog" ]
   }
+
+  deps = [
+    ":backends_action",
+  ]
 
   public_configs = [ ":backends_public_config" ]
 
@@ -150,11 +203,15 @@ ohos_source_set("sanei_usb") {
 
 foreach(name, sanei_names) {
   ohos_source_set("$name") {
-    sources = [ "./sanei/$name.c" ]
+    sources = [ "${target_dir}/sanei/$name.c" ]
 
     if (enable_hilog) {
       external_deps = [ "hilog:libhilog" ]
     }
+
+    deps = [
+      ":backends_action",
+    ]
 
     public_configs = [ ":backends_public_config" ]
 
@@ -169,12 +226,16 @@ ohos_static_library("sanei") {
   sources = []
 
   foreach(name, sanei_names) {
-    sources += [ "./sanei/$name.c" ]
+    sources += [ "${target_dir}/sanei/$name.c" ]
   }
 
   if (enable_hilog) {
     external_deps = [ "hilog:libhilog" ]
   }
+
+  deps = [
+    ":backends_action",
+  ]
 
   public_configs = [ ":backends_public_config" ]
 
@@ -186,7 +247,11 @@ ohos_static_library("sanei") {
 
 #build targets in /backend
 ohos_source_set("sane_strstatus") {
-  sources = [ "./backend/sane_strstatus.c" ]
+  sources = [ "${target_dir}/backend/sane_strstatus.c" ]
+
+  deps = [
+    ":backends_action",
+  ]
 
   public_configs = [ ":backends_public_config" ]
 
@@ -199,12 +264,16 @@ ohos_source_set("sane_strstatus") {
 
 ohos_source_set("threadpool_c") {
   sources = [
-    "threadpool/src/threadpool_c.cpp",
-    "threadpool/src/threadpool_wrapper.cpp"
+    "${target_dir}/threadpool/src/threadpool_c.cpp",
+    "${target_dir}/threadpool/src/threadpool_wrapper.cpp"
   ]
 
   include_dirs = [
-    "threadpool/include",
+    "${target_dir}/threadpool/include",
+  ]
+
+  deps = [
+    ":backends_action",
   ]
 
   external_deps = [
@@ -225,8 +294,8 @@ ohos_source_set("threadpool_c") {
 
 ohos_shared_library("sane") {
   sources = [
-    "./backend/dll.c",
-    "./backend/stubs.c",
+    "${target_dir}/backend/dll.c",
+    "${target_dir}/backend/stubs.c",
   ]
 
   public_configs = [ ":backends_public_config" ]
@@ -249,7 +318,7 @@ ohos_shared_library("sane") {
 
   if (enable_thread_pool) {
     deps += [ ":threadpool_c" ]
-    include_dirs += [ "threadpool/include" ]
+    include_dirs += [ "${target_dir}/threadpool/include" ]
   }
 
   if (enable_hilog) {
