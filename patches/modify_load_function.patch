@@ -1,0 +1,22 @@
+diff --git a/backend/dll.c b/backend/dll.c
+index bf34c4f6d..ca982190b 100644
+--- a/backend/dll.c
++++ b/backend/dll.c
+@@ -528,7 +528,7 @@ load (struct backend *be)
+     {
+       DBG (1, "load: couldn't find backend `%s' (%s)\n",
+ 	   be->name, strerror (errno));
+-      return SANE_STATUS_INVAL;
++      return SANE_STATUS_UNSUPPORTED;
+     }
+   fclose (fp);
+   DBG (3, "load: dlopen()ing `%s'\n", libname);
+@@ -641,7 +641,7 @@ init (struct backend *be)
+   SANE_Status status;
+   SANE_Int version;
+ 
+-  if (!be->loaded)
++  if (!be->loaded || be->op[OP_INIT] == op_unsupported)
+     {
+       status = load (be);
+       if (status != SANE_STATUS_GOOD)
