@@ -44,6 +44,7 @@ def apply_patch(source_dir):
         'modifying_driver_search_path.patch',
         'add_thread_poll.patch',
         'hilog_debug.patch',
+        'modify_load_function.patch',
     ]
 
     for patch in patch_list:
